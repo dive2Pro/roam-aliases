@@ -1,6 +1,9 @@
 # Roam Aliases
 
 
+![](https://github.com/dive2Pro/roam-aliases/blob/master/demo.png)
+
+
 
 ![](https://github.com/dive2Pro/roam-aliases/blob/master/demo.gif)
 
