@@ -1,11 +1,11 @@
-import React from "react";
+import React, { ReactNode } from "react";
 import ReactDom from "react-dom";
 import { extension_helper } from "./helper";
 import { Button, Divider, Icon, Label } from "@blueprintjs/core";
 import "./style.css";
 
 const roam = {
-  q: () => {
+  page: () => {
     const PREFIX = "aliases::";
     const ancestorrule = `[ 
    [ (ancestor ?child ?parent) 
@@ -33,6 +33,7 @@ const roam = {
       return [aliases.substring(PREFIX.length).split(","), page];
     }) as [string[], string][];
   },
+  block: () => {},
 };
 
 const TARGET_CLASS = ".rm-autocomplete__results.bp3-elevation-3";
@@ -59,65 +60,9 @@ const getInputText = () => {
   } while (result);
   return ["", -1, -1] as const;
 };
-const isPageRefMenu = (li: HTMLElement): boolean => {
-  const key = Object.keys(li).filter((key) =>
-    key.startsWith("__reactFiber")
-  )[0];
-
-  if (key) {
-    const fiber = (li as any)[key];
-    const searchPage = document.querySelector('[title="Search for a Page"]');
-    if (searchPage) {
-      //   console.log(li, "--");
-      return true;
-    } else if (fiber.child?.child && fiber.child.child.key) {
-      const isPage = fiber.child.child.key.startsWith("{:node/title");
-      //   console.log(isPage, li, " @@@");
-      console.log(fiber.child?.child, " = @child");
-      return isPage;
-    }
-  }
-  return false;
-};
-
-const observeRefMenuOpen = () => {
-  let info: BlockRefType;
-  //   const observer = createOverlayObserver((mutations) => {
-  //     mutations.find((mutation) => {
-  //       const li = mutation.target as HTMLElement;
-  //       if (!blockUid) {
-  //         return;
-  //       }
-  //       if (isPageRefMenu(li)) {
-  //         mounted = true;
-  //         const menuEl = li.querySelector(".bp3-menu");
-  //         const inputText = getInputText();
-  //         console.log(inputText, "----", blockUid, el.value);
-  //         // if (!menuEl || menuEl.querySelector(`.${EXPAND_EL_CLASS_NAME}`)) {
-  //         //   return;
-  //         // }
-  //         // const liAnchor = document.createElement("section");
-  //         // liAnchor.className = EXPAND_EL_CLASS_NAME;
-  //         // menuEl.insertBefore(liAnchor, menuEl.lastElementChild);
-  //         setTimeout(() => {
-  //           //   mountMenu({
-  //           //     ...info,
-  //           //     el: liAnchor,
-  //           //   });
-  //         });
-  //       }
-  //     });
-  //   });
-  const roamApp = document.querySelector(".roam-app");
-
-  extension_helper.on_uninstall(() => {
-    // observer.disconnect();
-  });
-};
 
 function onload() {
   observeInputChange();
-  observeRefMenuOpen();
 }
 
 function onunload() {
@@ -130,13 +75,12 @@ export default {
 };
 
 function renderAliases(
-  input: Readonly<[string, number, number]>,
+  text: string,
   el: HTMLDivElement,
-  aliases: [string[], string][]
+  children: ReactNode[]
 ) {
   const menuEl = document.createElement("div");
   menuEl.className = "rm-aliases";
-  const [text] = input;
   if (!el.querySelector(".rm-aliases")) {
     el.insertBefore(menuEl, el.firstElementChild);
     extension_helper.on_uninstall(() => {
@@ -144,78 +88,13 @@ function renderAliases(
     });
   }
 
-  const result: string[] = [];
-  text &&
-    aliases.forEach((item) => {
-      item[0].forEach((str) => {
-        if (str.includes(text)) {
-          result.push(`[${str.trim()}]([[${item[1]}]])`);
-        }
-      });
-    });
-
   ReactDom.render(<App />, el.querySelector(".rm-aliases"));
 
   function App() {
-    console.log(text, aliases, " -@@-");
-    return result.length ? (
+    return children.length ? (
       <>
-        <sub>Aliases</sub>
-        {result.map((item) => {
-          return (
-            <div className="dont-focus-block alias">
-              <Button
-                className="rm-autocomplete-result"
-                fill
-                minimal
-                alignText="left"
-                onClick={(e) => {
-                  let rangeStart = -1;
-                  const replaced = $el.value.replaceAll(
-                    `[[${text}]]`,
-                    (t, index, allStr) => {
-                      if (rangeStart !== -1) {
-                        return t;
-                      }
-                      rangeStart = t.length + index;
-                      if (rangeStart < input[2] && rangeStart > input[1]) {
-                        return item;
-                      }
-                      rangeStart = -1;
-                      return t;
-                    }
-                  );
-                  console.log(replaced, " replaced");
-
-                  //   $el.value = ;
-                  setTimeout(() => {
-                    window.roamAlphaAPI.updateBlock({
-                      block: {
-                        uid: blockUid["block-uid"],
-                        string: replaced,
-                      },
-                    });
-                    window.roamAlphaAPI.ui.setBlockFocusAndSelection({
-                      location: blockUid,
-                      selection: {
-                        start: input[1] + item.length - 2,
-                        end: input[1] + item.length - 2,
-                      },
-                    });
-                    // $el.setSelectionRange(
-                    //   input[1] + item.length - 2,
-                    //   input[1] + item.length - 2
-                    // );
-                  }, 10);
-                }}
-                rightIcon={<Icon size={12} icon="arrow-right" />}
-              >
-                {item}
-              </Button>
-            </div>
-          );
-        })}
-        <Divider />
+        <div className="sub-title">Aliases</div>
+        {children}
       </>
     ) : null;
   }
@@ -230,13 +109,85 @@ function observeInputChange() {
   const onArrive = (_el: HTMLTextAreaElement) => {
     blockUid = window.roamAlphaAPI.ui.getFocusedBlock();
     $el = _el;
-    const aliases = roam.q();
+    const aliases = roam.page();
     $el.oninput = () => {
-      console.log("- input change---");
-      const pageReferenceText = getInputText();
+      const input = getInputText();
+
+      const result: string[] = [];
+      const text = input[0];
+      text &&
+        aliases.forEach((item) => {
+          item[0].forEach((str) => {
+            if (str.includes(text)) {
+              result.push(`[${str.trim()}]([[${item[1]}]])`);
+            }
+          });
+        });
+
+      const children = result.map((item) => {
+        return (
+          <div className="dont-focus-block alias">
+            <Button
+              className="rm-autocomplete-result"
+              fill
+              minimal
+              alignText="left"
+              onClick={(e) => {
+                let rangeStart = -1;
+                const replaced = $el.value.replaceAll(
+                  `[[${text}]]`,
+                  (t, index, allStr) => {
+                    if (rangeStart !== -1) {
+                      return t;
+                    }
+                    rangeStart = t.length + index;
+                    if (rangeStart < input[2] && rangeStart > input[1]) {
+                      return item;
+                    }
+                    rangeStart = -1;
+                    return t;
+                  }
+                );
+                //   $el.value = ;
+                setTimeout(() => {
+                  window.roamAlphaAPI.updateBlock({
+                    block: {
+                      uid: blockUid["block-uid"],
+                      string: replaced,
+                    },
+                  });
+                  window.roamAlphaAPI.ui.setBlockFocusAndSelection({
+                    location: blockUid,
+                    selection: {
+                      start: input[1] + item.length - 2,
+                      end: input[1] + item.length - 2,
+                    },
+                  });
+                  // $el.setSelectionRange(
+                  //   input[1] + item.length - 2,
+                  //   input[1] + item.length - 2
+                  // );
+                }, 10);
+              }}
+              rightIcon={<Icon size={12} icon="arrow-right" />}
+            >
+              {item}
+            </Button>
+          </div>
+        );
+      });
+
       setTimeout(() => {
         const el = document.querySelector(TARGET_CLASS) as HTMLDivElement;
-        el && renderAliases(pageReferenceText, el, aliases);
+        el.classList.remove("alias-container");
+
+        if (el) {
+          if (children.length) {
+            el.classList.add("alias-container");
+          } else {
+          }
+          renderAliases(text, el, children);
+        }
       }, 10);
     };
   };
