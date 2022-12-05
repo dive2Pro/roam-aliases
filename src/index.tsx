@@ -74,6 +74,49 @@ export default {
   onunload,
 };
 
+function escapeRegExpChars(text: string) {
+  return text.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
+}
+
+export function highlightText(text: string, query: string) {
+  if (text.indexOf("![](data:image") > -1) {
+    return <>{text}</>;
+  }
+  let lastIndex = 0;
+  const words = query
+    .split(/\s+/)
+    .filter((word) => word.length > 0)
+    .map(escapeRegExpChars);
+  if (words.length === 0) {
+    return <>{text}</>;
+  }
+  const regexp = new RegExp(words.join("|"), "gi");
+  const tokens: React.ReactNode[] = [];
+  while (true) {
+    const match = regexp.exec(text);
+    if (!match) {
+      break;
+    }
+    const length = match[0].length;
+    const before = text.slice(lastIndex, regexp.lastIndex - length);
+    if (before.length > 0) {
+      tokens.push(before);
+    }
+    lastIndex = regexp.lastIndex;
+    tokens.push(
+      <span className="result-highlight" key={lastIndex}>
+        {match[0]}
+      </span>
+    );
+  }
+
+  const rest = text.slice(lastIndex);
+  if (rest.length > 0) {
+    tokens.push(rest);
+  }
+  return <>{tokens}</>;
+}
+
 function renderAliases(
   text: string,
   el: HTMLDivElement,
@@ -113,13 +156,20 @@ function observeInputChange() {
     $el.oninput = () => {
       const input = getInputText();
 
-      const result: string[] = [];
+      const result: {comp: ReactNode, text: string}[] = [];
       const text = input[0];
       text &&
         aliases.forEach((item) => {
           item[0].forEach((str) => {
             if (str.includes(text)) {
-              result.push(`[${str.trim()}]([[${item[1]}]])`);
+              result.push({
+                comp: (
+                  <>
+                    [{highlightText(str.trim(), text)}]([[{item[1]}]])
+                  </>
+                ),
+                text: `[${str.trim()}]([[${item[1]}]])`,
+              });
             }
           });
         });
@@ -142,7 +192,7 @@ function observeInputChange() {
                     }
                     rangeStart = t.length + index;
                     if (rangeStart < input[2] && rangeStart > input[1]) {
-                      return item;
+                      return item.text;
                     }
                     rangeStart = -1;
                     return t;
@@ -159,8 +209,8 @@ function observeInputChange() {
                   window.roamAlphaAPI.ui.setBlockFocusAndSelection({
                     location: blockUid,
                     selection: {
-                      start: input[1] + item.length - 2,
-                      end: input[1] + item.length - 2,
+                      start: input[1] + item.text.length - 2,
+                      end: input[1] + item.text.length - 2,
                     },
                   });
                   // $el.setSelectionRange(
@@ -171,7 +221,7 @@ function observeInputChange() {
               }}
               rightIcon={<Icon size={12} icon="arrow-right" />}
             >
-              {item}
+              {item.comp}
             </Button>
           </div>
         );

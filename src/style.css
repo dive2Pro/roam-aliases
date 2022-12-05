@@ -4,8 +4,6 @@
   cursor: pointer;
   min-width: 400px;
   float: right;
-  display: flex;
-  flex-direction: column;
 }
 
 .rm-aliases .sub-title {
@@ -14,9 +12,17 @@
 }
 
 .rm-autocomplete__results.bp3-elevation-3.alias-container .dont-unfocus-block {
-  max-width: 400px;
 }
 
 .rm-autocomplete__results.bp3-elevation-3.alias-container {
   min-width: 800px;
+}
+
+.rm-autocomplete__results.bp3-elevation-3.alias-container .dont-unfocus-block {
+  max-width: 400px;
+}
+
+
+.rm-aliases .result-highlight {
+  color: hsl(51,98%,81%)
 }
