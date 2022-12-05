@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode, useEffect } from "react";
 import ReactDom from "react-dom";
 import { extension_helper } from "./helper";
 import { Button, Divider, Icon, Label } from "@blueprintjs/core";
@@ -129,11 +129,18 @@ function renderAliases(
     extension_helper.on_uninstall(() => {
       el.removeChild(menuEl);
     });
+    el.onscroll = function (e) {
+      console.log(el.scrollTop, " top");
+      (el.querySelector(".rm-aliases") as HTMLDivElement).style.top =
+        el.scrollTop + "px";
+    };
   }
+  
 
   ReactDom.render(<App />, el.querySelector(".rm-aliases"));
 
   function App() {
+    useEffect(() => {}, []);
     return children.length ? (
       <>
         <div className="sub-title">Aliases</div>
@@ -156,7 +163,7 @@ function observeInputChange() {
     $el.oninput = () => {
       const input = getInputText();
 
-      const result: {comp: ReactNode, text: string}[] = [];
+      const result: { comp: ReactNode; text: string }[] = [];
       const text = input[0];
       text &&
         aliases.forEach((item) => {
@@ -173,7 +180,7 @@ function observeInputChange() {
             }
           });
         });
-
+      const elValue = $el.value;
       const children = result.map((item) => {
         return (
           <div className="dont-focus-block alias">
@@ -183,8 +190,10 @@ function observeInputChange() {
               minimal
               alignText="left"
               onClick={(e) => {
+                console.log(e, elValue, " --- click");
+                e.stopPropagation();
                 let rangeStart = -1;
-                const replaced = $el.value.replaceAll(
+                const replaced = elValue.replaceAll(
                   `[[${text}]]`,
                   (t, index, allStr) => {
                     if (rangeStart !== -1) {
@@ -200,6 +209,7 @@ function observeInputChange() {
                 );
                 //   $el.value = ;
                 setTimeout(() => {
+                  console.log(replaced, " -replaced", item);
                   window.roamAlphaAPI.updateBlock({
                     block: {
                       uid: blockUid["block-uid"],
@@ -229,12 +239,11 @@ function observeInputChange() {
 
       setTimeout(() => {
         const el = document.querySelector(TARGET_CLASS) as HTMLDivElement;
-        el.classList.remove("alias-container");
 
         if (el) {
+          el.classList.remove("alias-container");
           if (children.length) {
             el.classList.add("alias-container");
-          } else {
           }
           renderAliases(text, el, children);
         }

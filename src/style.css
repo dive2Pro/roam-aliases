@@ -4,6 +4,8 @@
   cursor: pointer;
   min-width: 400px;
   float: right;
+  max-height: 300px;
+  overflow: auto;
 }
 
 .rm-aliases .sub-title {
