@@ -1,6 +1,6 @@
 # Roam Aliases
 
-![](al.gif)
+![](https://github.com/dive2Pro/roam-aliases/blob/master/demo.gif)
 
 
 # how to use
