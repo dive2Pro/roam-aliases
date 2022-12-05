@@ -6,6 +6,8 @@
   float: right;
   max-height: 300px;
   overflow: auto;
+  position: absolute;
+  right: 0;
 }
 
 .rm-aliases .sub-title {

@@ -3,6 +3,7 @@ import ReactDom from "react-dom";
 import { extension_helper } from "./helper";
 import { Button, Divider, Icon, Label } from "@blueprintjs/core";
 import "./style.css";
+import "arrive";
 
 const roam = {
   page: () => {
@@ -122,22 +123,26 @@ function renderAliases(
   el: HTMLDivElement,
   children: ReactNode[]
 ) {
-  const menuEl = document.createElement("div");
-  menuEl.className = "rm-aliases";
-  if (!el.querySelector(".rm-aliases")) {
+  let menuEl = el.querySelector(".rm-aliases") as HTMLElement;
+
+  if (!menuEl) {
+    menuEl = document.createElement("div");
+    menuEl.className = "rm-aliases";
     el.insertBefore(menuEl, el.firstElementChild);
     extension_helper.on_uninstall(() => {
       el.removeChild(menuEl);
     });
-    el.onscroll = function (e) {
-      console.log(el.scrollTop, " top");
-      (el.querySelector(".rm-aliases") as HTMLDivElement).style.top =
-        el.scrollTop + "px";
-    };
   }
-  
+  el.onscroll = function (e) {
+    console.log(el.scrollTop, " top");
+    menuEl.style.top = el.scrollTop + "px";
+  };
 
-  ReactDom.render(<App />, el.querySelector(".rm-aliases"));
+  if (text) {
+    ReactDom.render(<App />, menuEl);
+  } else {
+    ReactDom.unmountComponentAtNode(menuEl);
+  }
 
   function App() {
     useEffect(() => {}, []);
@@ -165,7 +170,7 @@ function observeInputChange() {
 
       const result: { comp: ReactNode; text: string }[] = [];
       const text = input[0];
-      text &&
+      if (text) {
         aliases.forEach((item) => {
           item[0].forEach((str) => {
             if (str.includes(text)) {
@@ -180,6 +185,8 @@ function observeInputChange() {
             }
           });
         });
+      }
+
       const elValue = $el.value;
       const children = result.map((item) => {
         return (
@@ -190,8 +197,6 @@ function observeInputChange() {
               minimal
               alignText="left"
               onClick={(e) => {
-                console.log(e, elValue, " --- click");
-                e.stopPropagation();
                 let rangeStart = -1;
                 const replaced = elValue.replaceAll(
                   `[[${text}]]`,
@@ -239,7 +244,6 @@ function observeInputChange() {
 
       setTimeout(() => {
         const el = document.querySelector(TARGET_CLASS) as HTMLDivElement;
-
         if (el) {
           el.classList.remove("alias-container");
           if (children.length) {
