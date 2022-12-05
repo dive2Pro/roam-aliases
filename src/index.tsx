@@ -6,7 +6,7 @@ import "./style.css";
 
 const roam = {
   page: () => {
-    const PREFIX = "aliases::";
+    const PREFIX = "Aliases::";
     const ancestorrule = `[ 
    [ (ancestor ?child ?parent) 
         [?parent :block/children ?child] ]
