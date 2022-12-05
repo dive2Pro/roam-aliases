@@ -24,5 +24,6 @@
 
 
 .rm-aliases .result-highlight {
-  color: hsl(51,98%,81%)
+  /* color: hsl(51,98%,81%) */
+  font-weight: bold;
 }
