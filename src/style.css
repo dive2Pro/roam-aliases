@@ -1,6 +1,5 @@
 .rm-aliases {
   border-radius: 2px;
-  padding: 6px;
   cursor: pointer;
   min-width: 400px;
   float: right;
@@ -12,7 +11,7 @@
 
 .rm-aliases .sub-title {
   font-size: 10px;
-  margin-left: 15px;
+  margin-left: 10px;
 }
 
 .rm-autocomplete__results.bp3-elevation-3.alias-container .dont-unfocus-block {

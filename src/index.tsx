@@ -135,7 +135,9 @@ function renderAliases(
   }
   el.onscroll = function (e) {
     console.log(el.scrollTop, " top");
-    menuEl.style.top = el.scrollTop + "px";
+    if (menuEl.offsetHeight < el.offsetHeight) {
+      menuEl.style.top = el.scrollTop + "px";
+    }
   };
 
   if (text) {
@@ -173,7 +175,7 @@ function observeInputChange() {
       if (text) {
         aliases.forEach((item) => {
           item[0].forEach((str) => {
-            if (str.includes(text)) {
+            if (str.toLocaleLowerCase().includes(text.toLocaleLowerCase())) {
               result.push({
                 comp: (
                   <>
