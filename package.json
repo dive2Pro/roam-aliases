@@ -1,0 +1,36 @@
+{
+  "name": "@dive2pro/roam-aliases",
+  "version": "0.0.1",
+  "description": "aliases for roam research",
+  "main": "dist/extension.js",
+  "scripts": {
+    "build-web": "roamjs-scripts build",
+    "build": "roamjs-scripts build --depot",
+    "dev": "roamjs-scripts dev --depot"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dive2Pro/roam-aliases.git"
+  },
+  "keywords": [],
+  "author": "hyc",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dive2Pro/roam-aliases/issues"
+  },
+  "homepage": "https://github.com/dive2Pro/roam-aliases#readme",
+  "dependencies": {
+    "arrive": "^2.4.1",
+    "react-window": "^1.8.7",
+    "roamjs-components": "^0.72.9"
+  },
+  "devDependencies": {
+    "@blueprintjs/core": "3.54.0",
+    "@blueprintjs/select": "3.19.1",
+    "@types/arrive": "^2.4.1",
+    "@types/react": "16.14.2",
+    "@types/react-dom": "16.9.10",
+    "@types/react-window": "^1.8.5",
+    "roamjs-scripts": "^0.21.3"
+  }
+}
