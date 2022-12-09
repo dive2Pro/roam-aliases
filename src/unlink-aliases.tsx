@@ -79,7 +79,7 @@ const aliasesFilter = (alias: string, source: string) => {
   //   return true;
 };
 
-const getAllUnlinkReferenceFromAliases = <T extends string>(
+const getGroupAllUnlinkReferenceFromAliases = <T extends string>(
   //   exceptUids: string[],
   allblocksAndPages: PullBlock[],
   aliases: T[],
@@ -104,7 +104,7 @@ const getAllUnlinkReferenceFromAliases = <T extends string>(
 
 const useTablePagination = (config: { max: number }) => {
   const [state, _setState] = useState({
-    size: 10,
+    size: 1,
     index: 0,
   });
   const setState = (partialState: Partial<typeof state>) => {
@@ -128,26 +128,31 @@ const useTablePagination = (config: { max: number }) => {
       return pages - 1 > state.index;
     },
     hasPrev() {
-      return state.index > 0;
+      return state.index !== 0;
     },
     setSize(size: number) {
-      setState({ size });
+      setState({ size, index: 0 });
     },
     pages,
+    pagination: {
+      start: state.index * state.size,
+      end: (state.index + 1) * state.size,
+    },
   };
 };
 
 const TablePagination = (props: ReturnType<typeof useTablePagination>) => {
   return (
-    <div className="flex-reverse-row">
+    <div className="flex-reverse-row pagination">
       <div className={Classes.SELECT}>
         <select
           onChange={(e) => props.setSize(+e.target.value)}
-          value={props.state.index}
+          value={props.state.size + ""}
         >
-          <option value={20}>20</option>
-          <option value={10}>10</option>
-          <option value={5}>5</option>
+          <option value={"20"}>20 / Page</option>
+          <option value={"10"}>10 / Page</option>
+          <option value={"5"}>5 / Page </option>
+          <option value={"1"}>1 / Page</option>
         </select>
       </div>
       <div style={{ width: 20 }} />
@@ -156,14 +161,16 @@ const TablePagination = (props: ReturnType<typeof useTablePagination>) => {
         <Button
           icon="arrow-left"
           minimal
-          disabled={props.hasPrev()}
+          disabled={!props.hasPrev()}
           onClick={props.prev}
         />
-
+        <Button minimal small>
+          {props.state.index + 1}
+        </Button>
         <Button
           icon="arrow-right"
           minimal
-          disabled={props.hasNext()}
+          disabled={!props.hasNext()}
           onClick={props.next}
         />
         {/* <Button icon="chevron-left" minimal /> */}
@@ -198,20 +205,22 @@ const Open: FC<ReturnType<typeof useOpenState>> = (props) => {
 
 const GroupAlias = (props: { group: string; data: PullBlock[] }) => {
   const tableState = useTablePagination({ max: props.data.length });
-  const children = props.data.map((bp) => {
-    if (bp[":node/title"]) {
+  const children = props.data
+    .slice(tableState.pagination.start, tableState.pagination.end)
+    .map((bp) => {
+      if (bp[":node/title"]) {
+        return (
+          <div key={bp[":block/uid"]}>
+            <a className="unlink-page">{bp[":node/title"]}</a>
+          </div>
+        );
+      }
       return (
-        <div>
-          <a className="unlink-page">{bp[":node/title"]}</a>
+        <div className="rm-reference-item" key={bp[":block/uid"]}>
+          <BreadcrumbsBlock uid={bp[":block/uid"]} showPage />
         </div>
       );
-    }
-    return (
-      <div className="rm-reference-item">
-        <BreadcrumbsBlock uid={bp[":block/uid"]} />
-      </div>
-    );
-  });
+    });
   const openState = useOpenState(true);
 
   return (
@@ -222,7 +231,7 @@ const GroupAlias = (props: { group: string; data: PullBlock[] }) => {
       {openState.open ? (
         <>
           {children}
-          {tableState.pages > 1 ? <TablePagination {...tableState} /> : null}
+          <TablePagination {...tableState} />
         </>
       ) : null}
     </div>
@@ -248,13 +257,17 @@ const UnlinkAliases = ({ pageUid }: { pageUid: string }) => {
   }, [pageUid]);
 
   const groupUnlinkReferences = useMemo(() => {
-    const groupData = getAllUnlinkReferenceFromAliases(
+    const groupData = getGroupAllUnlinkReferenceFromAliases(
       allblocksAndPages,
       aliaseAndBlockUid[0]
     );
     return keys(groupData).map((key) => {
       return <GroupAlias group={key} data={groupData[key]}></GroupAlias>;
     });
+  }, [allblocksAndPages]);
+
+    const groupByPageUnlinkReferences = useMemo(() => {
+      
   }, [allblocksAndPages]);
 
   const content = isGroupAliasMode ? groupUnlinkReferences : null;

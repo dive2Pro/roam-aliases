@@ -61,7 +61,18 @@ export function BreadcrumbsBlock(props: { uid: string; showPage?: boolean }) {
           const t = target
             .closest("div.rm-block-main")
             .querySelector("div.rm-block__input");
-          const tuid = t.id.split("").splice(-9).join("");
+          const tuid = t.id.split("").splice(-10).join("").replace("/", "");
+          if (target.classList.contains("rm-caret") && props.showPage) {
+            if (tuid === uid) {
+              setUid(props.uid);
+              window.roamAlphaAPI.data.block.update({
+                block: {
+                  uid: tuid,
+                  open: true,
+                },
+              });
+            }
+          }
           if (e.altKey) {
             e.preventDefault();
             e.stopPropagation();
