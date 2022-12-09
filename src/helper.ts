@@ -11,3 +11,22 @@ export const extension_helper = {
     uninstalls = [];
   },
 };
+
+export const onRouteChange = (cb: () => void) => {
+  const onhashchange = window.onhashchange?.bind(window);
+
+  window.onhashchange = (evt) => {
+    onhashchange?.call(window, evt);
+    setTimeout(() => {
+      cb();
+    }, 200);
+  };
+  return () => {
+    window.onhashchange = onhashchange;
+  };
+};
+
+export const keys = <T extends object>(obj: T) => {
+  return Object.keys(obj) as unknown as (keyof T)[];
+};
+

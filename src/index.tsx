@@ -4,38 +4,9 @@ import { extension_helper } from "./helper";
 import { Button, Divider, Icon, Label } from "@blueprintjs/core";
 import "./style.css";
 import "arrive";
+import { unlinkAliasesInit } from "./unlink-aliases";
+import { roamAliases } from "./roam";
 
-const roam = {
-  page: () => {
-    const PREFIX = "Aliases::";
-    const ancestorrule = `[ 
-   [ (ancestor ?child ?parent) 
-        [?parent :block/children ?child] ]
-   [ (ancestor ?child ?a) 
-        [?parent :block/children ?child ] 
-        (ancestor ?parent ?a) ] ] ]`;
-    const result = window.roamAlphaAPI.q(
-      `
-    [
-        :find  ?s ?t
-        :in $ %
-        :where
-            [?parent :node/title ?t]
-            (ancestor ?child ?parent)
-            [?child :block/string ?s]
-            [(clojure.string/starts-with? ?s  "${PREFIX}")]
-            [?child :block/string ?e]
-    ]
-    
-`,
-      ancestorrule
-    ) as unknown as [string, string][];
-    return result.map(([aliases, page]) => {
-      return [aliases.substring(PREFIX.length).split(","), page];
-    }) as [string[], string][];
-  },
-  block: () => {},
-};
 
 const TARGET_CLASS = ".rm-autocomplete__results.bp3-elevation-3";
 let blockUid: {
@@ -64,6 +35,7 @@ const getInputText = () => {
 
 function onload() {
   observeInputChange();
+  unlinkAliasesInit();
 }
 
 function onunload() {
@@ -166,7 +138,7 @@ function observeInputChange() {
   const onArrive = (_el: HTMLTextAreaElement) => {
     blockUid = window.roamAlphaAPI.ui.getFocusedBlock();
     $el = _el;
-    const aliases = roam.page();
+    const aliases = roamAliases.all();
     $el.oninput = () => {
       const input = getInputText();
 
