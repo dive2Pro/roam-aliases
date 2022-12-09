@@ -1,0 +1,15 @@
+  .bb-page
+  > div:nth-child(2)
+  > div
+  > .rm-block-main:first-child
+  .roam-block:after {
+  position: absolute;
+  top: 0;
+  content: 'Page\'s "block", better leave it empty';
+  bottom: 0;
+  right: 0;
+  left: 0;
+  line-height: 30px;
+  color: #b9b8b8;
+  background: var(--bc-main, white);
+}

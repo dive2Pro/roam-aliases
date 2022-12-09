@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Icon } from "@blueprintjs/core";
+import "./breadcrumbs-block.css";
 
 type ReversePullBlock = {
   ":block/uid": string;
@@ -54,14 +55,15 @@ export function BreadcrumbsBlock(props: { uid: string; showPage?: boolean }) {
 
   return (
     <div
-      className={parents.length ? "" : "page"}
+      className={parents.length ? "" : "bb-page"}
       onClickCapture={(e) => {
         const target = e.target as HTMLDivElement;
         if (target.closest(".controls.rm-block__controls")) {
           const t = target
             .closest("div.rm-block-main")
             .querySelector("div.rm-block__input");
-          const tuid = t.id.split("").splice(-10).join("").replace("/", "");
+          const tuid = t.id.split("").splice(-10).join("").replace(/^-/, "");
+          console.log(tuid, target.className, uid)
           if (target.classList.contains("rm-caret") && props.showPage) {
             if (tuid === uid) {
               setUid(props.uid);
