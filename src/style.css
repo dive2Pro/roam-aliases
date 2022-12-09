@@ -38,6 +38,7 @@
 
 .rm-unlink-aliases label.bp3-inline {
   font-weight: normal;
+  margin-bottom: 0;
 }
 
 .rm-unlink-aliases .block-breadcrumbs {
@@ -95,5 +96,10 @@
 .rm-unlink-aliases .group {
   background-color: #EBF1F5;
   padding-top: 5px ;
-  margin-bottom: 5px;
+  margin: 4px 8px;
+}
+
+.flex-row {
+  display: flex;
+  flex-direction: row;
 }

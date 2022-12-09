@@ -10,10 +10,15 @@ import {
   FormGroup,
   ControlGroup,
 } from "@blueprintjs/core";
-import React, { FC, useMemo, useState } from "react";
+import React, { FC, useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
 import { PullBlock } from "roamjs-components/types";
 import { BreadcrumbsBlock } from "./breadcrumbs-block";
+import {
+  readConfigFromUid,
+  resetConfigByUid,
+  saveConfigByUid,
+} from "./config-settings";
 import { extension_helper, keys, onRouteChange } from "./helper";
 import { roam, roamAliases } from "./roam";
 import { AliasesBlock } from "./type";
@@ -63,7 +68,7 @@ const aliasesFilter = (alias: string, source: string) => {
   );
 
   const pageRererence = new RegExp(`\[\[${alias}\]\]`, "gi");
-  console.log(source, alias, "---@");
+  //   console.log(source, alias, "---@");
   return source
     .replaceAll(aliasReference, "__")
     .replaceAll(pageRererence, "__")
@@ -269,10 +274,10 @@ const GroupAlias = (props: { group: string; data: PullBlock[] }) => {
         <strong>{props.group}</strong>
       </Open>
       {openState.open ? (
-        <>
+        <div style={{ padding: "5px 0" }}>
           {children}
           <TablePagination {...tableState} />
-        </>
+        </div>
       ) : null}
     </div>
   );
@@ -328,17 +333,26 @@ const GroupPageAlias = (props: { id: string; data: PullBlock[] }) => {
 const GroupPages = (props: {
   data: Record<string, AliasesBlock[]>;
   aliases: string[];
+  pageUid: string;
 }) => {
   const tableState = useTablePagination({
     max: Object.keys(props.data).length,
     size: 10,
   });
-  const [checked, setChecked] = useState(() =>
-    props.aliases.reduce((p, c) => {
+  const config = readConfigFromUid(props.pageUid);
+  const resetChecked = () => {
+    return props.aliases.reduce((p, c) => {
       p[c] = true;
       return p;
-    }, {} as Record<string, boolean>)
-  );
+    }, {} as Record<string, boolean>);
+  };
+  const initChecked = () => {
+    return props.aliases.reduce((p, c) => {
+      p[c] = config.checked[c] ?? true;
+      return p;
+    }, {} as Record<string, boolean>);
+  };
+  const [checked, setChecked] = useState(() => initChecked());
 
   const data = keys(props.data)
     .slice(tableState.pagination.start, tableState.pagination.end)
@@ -358,23 +372,45 @@ const GroupPages = (props: {
     });
   return (
     <div className="">
-      <div style={{ marginTop: 5 }}>
-        {props.aliases.map((alias) => {
-          return (
-            <Checkbox
-              inline
-              checked={checked[alias]}
-              onChange={() => {
-                setChecked((prev) => ({
-                  ...prev,
-                  [alias]: !checked[alias],
-                }));
-              }}
-              alignIndicator="right"
-              label={alias}
-            />
-          );
-        })}
+      <div
+        className="flex-row"
+        style={{ margin: "4px 8px", justifyContent: "space-between" }}
+      >
+        <div>
+          {props.aliases.map((alias) => {
+            return (
+              <Checkbox
+                inline
+                checked={checked[alias]}
+                onChange={() => {
+                  const nextChecked = {
+                    ...checked,
+                    [alias]: !checked[alias],
+                  };
+                  setChecked(nextChecked);
+                  saveConfigByUid(props.pageUid, {
+                    checked: nextChecked,
+                  });
+                }}
+                alignIndicator="right"
+                label={alias}
+              />
+            );
+          })}
+        </div>
+        <div>
+          <Button
+            icon="reset"
+            small
+            minimal
+            onClick={() => {
+              setChecked(resetChecked());
+              saveConfigByUid(props.pageUid, {
+                checked: resetChecked(),
+              });
+            }}
+          />
+        </div>
       </div>
       {data}
       <TablePagination {...tableState} />
@@ -387,18 +423,25 @@ const UnlinkAliasesContent: FC = (props) => {
 };
 
 const UnlinkAliases = ({ pageUid }: { pageUid: string }) => {
-  const openState = useOpenState(false);
-  const [isGroupAliasMode, setIsGroupAliasMode] = useState(true);
+  const config = readConfigFromUid(pageUid);
+  const openState = useOpenState(config.open === "1");
+  const [isGroupAliasMode, setIsGroupAliasMode] = useState(
+    config.mode === "alias"
+  );
+  useEffect(() => {
+    saveConfigByUid(pageUid, { mode: isGroupAliasMode ? "alias" : "page" });
+  }, [isGroupAliasMode]);
+  const [updateKey, setUpdateKey] = useState(0);
   const aliaseAndBlockUid = useMemo(() => {
     const aliases = getAllAliasesFromPageUid(pageUid);
     return aliases;
-  }, [pageUid]);
+  }, [pageUid, updateKey]);
 
   const exceptUids = [pageUid, ...aliaseAndBlockUid[1]];
 
   const allblocksAndPages = useMemo(() => {
     return roam.allBlockAndPagesExceptUids(exceptUids);
-  }, [pageUid]);
+  }, [pageUid, updateKey]);
 
   const groupUnlinkReferences = () => {
     const groupData = getGroupAllUnlinkReferenceFromAliases(
@@ -416,7 +459,13 @@ const UnlinkAliases = ({ pageUid }: { pageUid: string }) => {
       aliaseAndBlockUid[0]
     );
 
-    return <GroupPages data={groupPageIdData} aliases={aliaseAndBlockUid[0]} />;
+    return (
+      <GroupPages
+        pageUid={pageUid}
+        data={groupPageIdData}
+        aliases={aliaseAndBlockUid[0]}
+      />
+    );
   };
 
   const content = isGroupAliasMode
@@ -429,7 +478,13 @@ const UnlinkAliases = ({ pageUid }: { pageUid: string }) => {
         style={{ margin: "-4px -4px 0px -16px" }}
       >
         <div className="flex-h-box rm-title-arrow-wrapper">
-          <Open {...openState}>
+          <Open
+            {...openState}
+            setOpen={(next) => {
+              openState.setOpen(next);
+              saveConfigByUid(pageUid, { open: next ? "1" : "0" });
+            }}
+          >
             <strong
               style={{
                 color: "rgb(206, 217, 224)",
@@ -449,15 +504,25 @@ const UnlinkAliases = ({ pageUid }: { pageUid: string }) => {
             >
               <Popover
                 autoFocus={false}
+                enforceFocus={false}
                 content={
                   <Menu>
+                    <MenuItem text="Group" icon="th-list">
+                      <MenuItem
+                        text="Group By Alias"
+                        onClick={() => setIsGroupAliasMode(true)}
+                      />
+                      <MenuItem
+                        text="Group By Page"
+                        onClick={() => setIsGroupAliasMode(false)}
+                      />
+                    </MenuItem>
                     <MenuItem
-                      text="Group By Alias"
-                      onClick={() => setIsGroupAliasMode(true)}
-                    />
-                    <MenuItem
-                      text="Group By Page"
-                      onClick={() => setIsGroupAliasMode(false)}
+                      text={"Refresh"}
+                      icon="refresh"
+                      onClick={() => {
+                        setUpdateKey((prev) => prev + 1);
+                      }}
                     />
                   </Menu>
                 }
@@ -478,7 +543,7 @@ const UnlinkAliases = ({ pageUid }: { pageUid: string }) => {
         </div>
         {openState.open ? (
           <UnlinkAliasesContent>
-            <div style={{ marginLeft: 10 }}>{content}</div>
+            <div style={{ marginLeft: 10, marginTop: 10 }}>{content}</div>
           </UnlinkAliasesContent>
         ) : null}
       </div>

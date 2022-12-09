@@ -6,6 +6,8 @@ import "./style.css";
 import "arrive";
 import { unlinkAliasesInit } from "./unlink-aliases";
 import { roamAliases } from "./roam";
+import { RoamExtensionAPI } from "./type";
+import { initConfig } from "./config-settings";
 
 
 const TARGET_CLASS = ".rm-autocomplete__results.bp3-elevation-3";
@@ -33,7 +35,8 @@ const getInputText = () => {
   return ["", -1, -1] as const;
 };
 
-function onload() {
+function onload({ extensionAPI }: { extensionAPI: RoamExtensionAPI }) {
+  initConfig(extensionAPI);
   observeInputChange();
   unlinkAliasesInit();
 }
