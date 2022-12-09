@@ -55,11 +55,11 @@
   font-size: 12px;
 }
 
-.rm-unlink-aliases .page .roam-block {
+.rm-unlink-aliases .bb-page .roam-block {
   position: relative;
 }
 
-.rm-unlink-aliases .page .rm-block-separator {
+.rm-unlink-aliases .bb-page .rm-block-separator {
   min-width: 0px;
   max-width: 10px;
   flex: 0 0 0px;
@@ -67,7 +67,13 @@
 .rm-mentions .rm-ref-page-view .rm-title-arrow-wrapper {
   position: relative;
 }
-
+.no-select {
+  -webkit-user-select: none; /* Safari */
+  -khtml-user-select: none; /* Konqueror HTML */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+  user-select: none; /* Non-prefixed version, currently */
+}
 .rm-unlink-aliases a.unlink-page {
   margin: 4px 8px;
   flex: 1 1 100%;
@@ -82,6 +88,6 @@
   opacity: 1;
 }
 
-.pagination{
+.pagination {
   margin: 16px 16px 5px 16px;
 }

@@ -10,23 +10,14 @@ import {
   Menu,
   MenuItem,
 } from "@blueprintjs/core";
-import { FC, useMemo, useState } from "react";
+import React, { FC, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
 import { PullBlock } from "roamjs-components/types";
 import { BreadcrumbsBlock } from "./breadcrumbs-block";
 import { extension_helper, keys, onRouteChange } from "./helper";
 import { roam, roamAliases } from "./roam";
 
-const getPullBlockFromUid = (uid: string) => {
-  return window.roamAlphaAPI.pull(
-    `
-        [
-            *
-        ]
-    `,
-    [":block/uid", `${uid}`]
-  );
-};
+
 
 const isPage = (block: PullBlock) => {
   return !!block[":node/title"];
@@ -240,7 +231,12 @@ const GroupAlias = (props: { group: string; data: PullBlock[] }) => {
       if (bp[":node/title"]) {
         return (
           <div key={bp[":block/uid"]}>
-            <a className="unlink-page">{bp[":node/title"]}</a>
+            <a
+              onClick={(e) => openPage(e, bp[":block/uid"])}
+              className="unlink-page rm-page__title no-select"
+            >
+              {bp[":node/title"]}
+            </a>
           </div>
         );
       }
@@ -267,20 +263,22 @@ const GroupAlias = (props: { group: string; data: PullBlock[] }) => {
   );
 };
 
+const openPage = (e: React.MouseEvent<HTMLAnchorElement>, uid: string) => {
+  if (e.shiftKey) {
+    roam.open.sidebar(uid);
+  } else {
+    roam.open.mainWindow(uid);
+  }
+};
+
 const GroupPageAlias = (props: { id: string; data: PullBlock[] }) => {
   const openState = useOpenState(true);
   const page = roam.blockFromId(props.id);
-  const tableState = useTablePagination({ max: props.data.length });
-  const content = props.data
+  const data = props.data.filter((bp) => !bp[":node/title"]);
+  const tableState = useTablePagination({ max: data.length });
+  const content = data
     .slice(tableState.pagination.start, tableState.pagination.end)
     .map((bp) => {
-      if (bp[":node/title"]) {
-        return (
-          <div key={bp[":block/uid"]}>
-            <a className="unlink-page">{bp[":node/title"]}</a>
-          </div>
-        );
-      }
       return (
         <div className="rm-reference-item" key={bp[":block/uid"]}>
           <BreadcrumbsBlock uid={bp[":block/uid"]} showPage />
@@ -290,7 +288,14 @@ const GroupPageAlias = (props: { id: string; data: PullBlock[] }) => {
   return (
     <div>
       <Open {...openState}>
-        <strong>{page[":node/title"]}</strong>
+        <strong>
+          <a
+            className="rm-page__title no-select"
+            onClick={(e) => openPage(e, page[":block/uid"])}
+          >
+            {page[":node/title"]}
+          </a>
+        </strong>
       </Open>
       {!openState.open ? null : (
         <>
@@ -438,7 +443,7 @@ const init = async () => {
   if (!pageOrBlockUid) {
     return;
   }
-  const block = getPullBlockFromUid(pageOrBlockUid);
+  const block = roam.getPullBlockFromUid(pageOrBlockUid);
   if (!isPage(block)) {
     return;
   }

@@ -88,4 +88,32 @@ export const roam = {
       +id
     ) as unknown as PullBlock;
   },
+  open: {
+    mainWindow(uid: string) {
+      window.roamAlphaAPI.ui.mainWindow.openBlock({
+        block: { uid },
+      });
+    },
+    sidebar(uid: string) {
+      window.roamAlphaAPI.ui.rightSidebar.addWindow({
+        window: {
+          "block-uid": uid,
+          type: "block",
+        },
+      });
+    },
+  },
+  block: {
+    open: () => {},
+  },
+  getPullBlockFromUid: (uid: string) => {
+    return window.roamAlphaAPI.pull(
+      `
+        [
+            *
+        ]
+    `,
+      [":block/uid", `${uid}`]
+    );
+  },
 };
