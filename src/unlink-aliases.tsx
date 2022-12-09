@@ -7,6 +7,8 @@ import {
   Tooltip,
   Icon,
   Popover,
+  Menu,
+  MenuItem,
 } from "@blueprintjs/core";
 import { FC, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
@@ -77,6 +79,33 @@ const aliasesFilter = (alias: string, source: string) => {
     .replaceAll(pageRererence, "__")
     .includes(alias);
   //   return true;
+};
+
+const getPageGroupAllUnlinnkReferenceFromAliases = <T extends string>(
+  //   exceptUids: string[],
+  allblocksAndPages: PullBlock[],
+  aliases: T[],
+  caseSensive = true
+) => {
+  //   console.log(allblocksAndPages, "@-", exceptUids);
+  const filtered = allblocksAndPages.reduce((p, bp) => {
+    const s = bp[":block/string"] || bp[":node/title"] || "";
+
+    aliases.forEach((alias) => {
+      if (aliasesFilter(alias, s)) {
+        const id = (
+          bp[":node/title"] ? bp[":db/id"] : bp[":block/page"][":db/id"] + ""
+        ) as T;
+        if (!p[id]) {
+          p[id] = [bp];
+        } else {
+          p[id].push(bp);
+        }
+      }
+    });
+    return p;
+  }, {} as Record<T, PullBlock[]>);
+  return filtered;
 };
 
 const getGroupAllUnlinkReferenceFromAliases = <T extends string>(
@@ -238,6 +267,62 @@ const GroupAlias = (props: { group: string; data: PullBlock[] }) => {
   );
 };
 
+const GroupPageAlias = (props: { id: string; data: PullBlock[] }) => {
+  const openState = useOpenState(true);
+  const page = roam.blockFromId(props.id);
+  const tableState = useTablePagination({ max: props.data.length });
+  const content = props.data
+    .slice(tableState.pagination.start, tableState.pagination.end)
+    .map((bp) => {
+      if (bp[":node/title"]) {
+        return (
+          <div key={bp[":block/uid"]}>
+            <a className="unlink-page">{bp[":node/title"]}</a>
+          </div>
+        );
+      }
+      return (
+        <div className="rm-reference-item" key={bp[":block/uid"]}>
+          <BreadcrumbsBlock uid={bp[":block/uid"]} showPage />
+        </div>
+      );
+    });
+  return (
+    <div>
+      <Open {...openState}>
+        <strong>{page[":node/title"]}</strong>
+      </Open>
+      {!openState.open ? null : (
+        <>
+          {content}
+          {props.data.length > 20 ? (
+            <TablePagination {...tableState}></TablePagination>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
+};
+
+const GroupPages = (props: { data: Record<string, PullBlock[]> }) => {
+  const tableState = useTablePagination({
+    max: Object.keys(props.data).length,
+  });
+
+  const data = keys(props.data)
+    .slice(tableState.pagination.start, tableState.pagination.end)
+    .map((id) => {
+      return <GroupPageAlias id={id} data={props.data[id]} />;
+    });
+  console.log(data, props, "----@");
+  return (
+    <div>
+      {data}
+      <TablePagination {...tableState} />
+    </div>
+  );
+};
+
 const UnlinkAliasesContent: FC = (props) => {
   return <>{props.children}</>;
 };
@@ -256,7 +341,7 @@ const UnlinkAliases = ({ pageUid }: { pageUid: string }) => {
     return roam.allBlockAndPagesExceptUids(exceptUids);
   }, [pageUid]);
 
-  const groupUnlinkReferences = useMemo(() => {
+  const groupUnlinkReferences = () => {
     const groupData = getGroupAllUnlinkReferenceFromAliases(
       allblocksAndPages,
       aliaseAndBlockUid[0]
@@ -264,13 +349,19 @@ const UnlinkAliases = ({ pageUid }: { pageUid: string }) => {
     return keys(groupData).map((key) => {
       return <GroupAlias group={key} data={groupData[key]}></GroupAlias>;
     });
-  }, [allblocksAndPages]);
+  };
 
-    const groupByPageUnlinkReferences = useMemo(() => {
-      
-  }, [allblocksAndPages]);
+  const groupByPageUnlinkReferences = () => {
+    const groupPageIdData = getPageGroupAllUnlinnkReferenceFromAliases(
+      allblocksAndPages,
+      aliaseAndBlockUid[0]
+    );
+    return <GroupPages data={groupPageIdData} />;
+  };
 
-  const content = isGroupAliasMode ? groupUnlinkReferences : null;
+  const content = isGroupAliasMode
+    ? groupUnlinkReferences()
+    : groupByPageUnlinkReferences();
   return (
     <div className="rm-mentions refs-by-page-view">
       <div
@@ -296,7 +387,21 @@ const UnlinkAliases = ({ pageUid }: { pageUid: string }) => {
                 top: 0,
               }}
             >
-              <Popover>
+              <Popover
+                autoFocus={false}
+                content={
+                  <Menu>
+                    <MenuItem
+                      text="Group By Alias"
+                      onClick={() => setIsGroupAliasMode(true)}
+                    />
+                    <MenuItem
+                      text="Group By Page"
+                      onClick={() => setIsGroupAliasMode(false)}
+                    />
+                  </Menu>
+                }
+              >
                 <Button
                   small
                   minimal

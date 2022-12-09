@@ -82,4 +82,10 @@ export const roam = {
       return !uids.some((uid) => uid === bp[":block/uid"]);
     });
   },
+  blockFromId: (id: string) => {
+    return window.roamAlphaAPI.data.fast.q(
+      `[:find (pull ?e [*]) . :in $ ?id :where [?id :block/uid ?uid] [?e :block/uid ?uid]]`,
+      +id
+    ) as unknown as PullBlock;
+  },
 };
