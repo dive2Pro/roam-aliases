@@ -6,6 +6,7 @@ import {
   Label,
   Tooltip,
   Icon,
+  Popover,
 } from "@blueprintjs/core";
 import { FC, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
@@ -79,12 +80,12 @@ const aliasesFilter = (alias: string, source: string) => {
 };
 
 const getAllUnlinkReferenceFromAliases = <T extends string>(
-  exceptUids: string[],
+  //   exceptUids: string[],
+  allblocksAndPages: PullBlock[],
   aliases: T[],
   caseSensive = true
 ) => {
-  const allblocksAndPages = roam.allBlockAndPagesExceptUids(exceptUids);
-  console.log(allblocksAndPages, "@-", exceptUids);
+  //   console.log(allblocksAndPages, "@-", exceptUids);
   const filtered = allblocksAndPages.reduce((p, bp) => {
     const s = bp[":block/string"] || bp[":node/title"] || "";
     aliases.forEach((alias) => {
@@ -101,44 +102,162 @@ const getAllUnlinkReferenceFromAliases = <T extends string>(
   return filtered;
 };
 
-const UnlinkAliasesContent: FC = (props) => {
+const useTablePagination = (config: { max: number }) => {
+  const [state, _setState] = useState({
+    size: 10,
+    index: 0,
+  });
+  const setState = (partialState: Partial<typeof state>) => {
+    _setState((prev) => {
+      return {
+        ...prev,
+        ...partialState,
+      };
+    });
+  };
+  const pages = Math.ceil(config.max / state.size);
+  return {
+    state,
+    next() {
+      setState({ index: state.index + 1 });
+    },
+    prev() {
+      setState({ index: state.index - 1 });
+    },
+    hasNext() {
+      return pages - 1 > state.index;
+    },
+    hasPrev() {
+      return state.index > 0;
+    },
+    setSize(size: number) {
+      setState({ size });
+    },
+    pages,
+  };
+};
+
+const TablePagination = (props: ReturnType<typeof useTablePagination>) => {
   return (
-    <>
-      {props.children}
-      <div className="flex-reverse-row">
-        <div className={Classes.SELECT}>
-          <select>
-            <option value={20}>20</option>
-            <option value={10}>10</option>
-            <option value={5}>5</option>
-          </select>
-        </div>
-        <div style={{ width: 20 }} />
-        <ButtonGroup>
-          {/* <Button icon="double-chevron-left" minimal /> */}
-          <Button icon="arrow-left" minimal />
-          <Button icon="arrow-right" minimal />
-          {/* <Button icon="chevron-left" minimal /> */}
-          {/* <Button icon="chevron-right" minimal /> */}
-          {/* <Button icon="double-chevron-right" minimal /> */}
-        </ButtonGroup>
+    <div className="flex-reverse-row">
+      <div className={Classes.SELECT}>
+        <select
+          onChange={(e) => props.setSize(+e.target.value)}
+          value={props.state.index}
+        >
+          <option value={20}>20</option>
+          <option value={10}>10</option>
+          <option value={5}>5</option>
+        </select>
       </div>
-    </>
+      <div style={{ width: 20 }} />
+      <ButtonGroup>
+        {/* <Button icon="double-chevron-left" minimal /> */}
+        <Button
+          icon="arrow-left"
+          minimal
+          disabled={props.hasPrev()}
+          onClick={props.prev}
+        />
+
+        <Button
+          icon="arrow-right"
+          minimal
+          disabled={props.hasNext()}
+          onClick={props.next}
+        />
+        {/* <Button icon="chevron-left" minimal /> */}
+        {/* <Button icon="chevron-right" minimal /> */}
+        {/* <Button icon="double-chevron-right" minimal /> */}
+      </ButtonGroup>
+    </div>
   );
 };
 
+const useOpenState = (initialOpen = false) => {
+  const [open, setOpen] = useState(initialOpen);
+  return {
+    open,
+    setOpen,
+  };
+};
+
+const Open: FC<ReturnType<typeof useOpenState>> = (props) => {
+  return (
+    <div>
+      <Icon
+        icon={props.open ? "caret-down" : "caret-right"}
+        className="rm-caret bp3-icon-standard hover-opacity"
+        onClick={() => props.setOpen(!props.open)}
+        size={14}
+      ></Icon>
+      {props.children}
+    </div>
+  );
+};
+
+const GroupAlias = (props: { group: string; data: PullBlock[] }) => {
+  const tableState = useTablePagination({ max: props.data.length });
+  const children = props.data.map((bp) => {
+    if (bp[":node/title"]) {
+      return (
+        <div>
+          <a className="unlink-page">{bp[":node/title"]}</a>
+        </div>
+      );
+    }
+    return (
+      <div className="rm-reference-item">
+        <BreadcrumbsBlock uid={bp[":block/uid"]} />
+      </div>
+    );
+  });
+  const openState = useOpenState(true);
+
+  return (
+    <div>
+      <Open {...openState}>
+        <strong>{props.group}</strong>
+      </Open>
+      {openState.open ? (
+        <>
+          {children}
+          {tableState.pages > 1 ? <TablePagination {...tableState} /> : null}
+        </>
+      ) : null}
+    </div>
+  );
+};
+
+const UnlinkAliasesContent: FC = (props) => {
+  return <>{props.children}</>;
+};
+
 const UnlinkAliases = ({ pageUid }: { pageUid: string }) => {
-  const [open, setOpen] = useState(false);
+  const openState = useOpenState(false);
+  const [isGroupAliasMode, setIsGroupAliasMode] = useState(true);
   const aliaseAndBlockUid = useMemo(() => {
     const aliases = getAllAliasesFromPageUid(pageUid);
     return aliases;
   }, [pageUid]);
+
+  const exceptUids = [pageUid, ...aliaseAndBlockUid[1]];
+
+  const allblocksAndPages = useMemo(() => {
+    return roam.allBlockAndPagesExceptUids(exceptUids);
+  }, [pageUid]);
+
   const groupUnlinkReferences = useMemo(() => {
-    return getAllUnlinkReferenceFromAliases(
-      [pageUid, ...aliaseAndBlockUid[1]],
+    const groupData = getAllUnlinkReferenceFromAliases(
+      allblocksAndPages,
       aliaseAndBlockUid[0]
     );
-  }, [pageUid]);
+    return keys(groupData).map((key) => {
+      return <GroupAlias group={key} data={groupData[key]}></GroupAlias>;
+    });
+  }, [allblocksAndPages]);
+
+  const content = isGroupAliasMode ? groupUnlinkReferences : null;
   return (
     <div className="rm-mentions refs-by-page-view">
       <div
@@ -146,41 +265,47 @@ const UnlinkAliases = ({ pageUid }: { pageUid: string }) => {
         style={{ margin: "-4px -4px 0px -16px" }}
       >
         <div className="flex-h-box rm-title-arrow-wrapper">
-          <Icon
-            icon={open ? "caret-down" : "caret-right"}
-            className="rm-caret bp3-icon-standard "
-            onClick={() => setOpen(!open)}
-            size={16}
-          ></Icon>
-          <strong
-            style={{
-              color: "rgb(206, 217, 224)",
-            }}
-          >
-            Unlinked Aliases References
-          </strong>
+          <Open {...openState}>
+            <strong
+              style={{
+                color: "rgb(206, 217, 224)",
+              }}
+            >
+              Unlinked Aliases References
+            </strong>
+          </Open>
+
+          {openState.open ? (
+            <div
+              style={{
+                position: "absolute",
+                right: 0,
+                top: 0,
+              }}
+            >
+              <Popover>
+                <Button
+                  small
+                  minimal
+                  icon="cog"
+                  // intent={
+                  //   level.current !== level.max || sort.index !== 0
+                  //     ? "danger"
+                  //     : "none"
+                  // }
+                />
+              </Popover>
+            </div>
+          ) : null}
         </div>
-        {open ? (
+        {openState.open ? (
           <UnlinkAliasesContent>
             <div style={{ marginTop: 5 }}>
               {aliaseAndBlockUid[0].map((alias) => {
                 return <Checkbox inline alignIndicator="right" label={alias} />;
               })}
             </div>
-            <div style={{ marginLeft: 10 }}>
-              {keys(groupUnlinkReferences)
-                .map((key) => {
-                  return groupUnlinkReferences[key].map((bp) => {
-                    if (bp[":node/title"]) {
-                      return <a>{bp[":node/title"]}</a>;
-                    }
-                    return <BreadcrumbsBlock uid={bp[":block/uid"]} />;
-                  });
-                })
-                .map((comp) => {
-                  return <div className="rm-reference-item">{comp}</div>;
-                })}
-            </div>
+            <div style={{ marginLeft: 10 }}>{content}</div>
           </UnlinkAliasesContent>
         ) : null}
       </div>

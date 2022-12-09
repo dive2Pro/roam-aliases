@@ -14,9 +14,6 @@
   margin-left: 10px;
 }
 
-.rm-autocomplete__results.bp3-elevation-3.alias-container .dont-unfocus-block {
-}
-
 .rm-autocomplete__results.bp3-elevation-3.alias-container {
   min-width: 800px;
 }
@@ -66,4 +63,21 @@
   min-width: 0px;
   max-width: 10px;
   flex: 0 0 0px;
+}
+.rm-mentions .rm-ref-page-view .rm-title-arrow-wrapper {
+  position: relative;
+}
+
+.rm-unlink-aliases a.unlink-page {
+  margin: 4px 8px;
+  flex: 1 1 100%;
+  word-break: break-word;
+  padding-right: 8px;
+}
+.hover-opacity {
+  opacity: 0;
+  transition: 0.5s all;
+}
+.hover-opacity:hover {
+  opacity: 1;
 }
