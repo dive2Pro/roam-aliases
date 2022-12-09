@@ -28,7 +28,7 @@ export const roamAliases = {
     ) as unknown as [string, string][];
 
     return result.map(([aliases, page]) => {
-      return [aliases.substring(PREFIX.length).split(","), page];
+      return [aliases.substring(PREFIX.length).split(",").map(s => s.trim()), page];
     }) as [string[], string][];
   },
   page: (uid: string) => {
@@ -49,7 +49,7 @@ export const roamAliases = {
       ancestorrule
     ) as unknown as [string, string][];
     return result.map(([aliases, uid]) => {
-      return [aliases.substring(PREFIX.length).split(","), uid];
+      return [aliases.substring(PREFIX.length).split(",").map( s=> s.trim()), uid];
     }) as [string[], string][];
   },
   block: () => {},
@@ -80,7 +80,7 @@ export const roam = {
     ) as unknown as PullBlock[];
     return allblocksAndPages.filter((bp) => {
       return !uids.some((uid) => uid === bp[":block/uid"]);
-    });
+    }).map(item => ({...item}));
   },
   blockFromId: (id: string) => {
     return window.roamAlphaAPI.data.fast.q(

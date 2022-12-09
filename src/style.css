@@ -91,3 +91,9 @@
 .pagination {
   margin: 16px 16px 5px 16px;
 }
+
+.rm-unlink-aliases .group {
+  background-color: #EBF1F5;
+  padding-top: 5px ;
+  margin-bottom: 5px;
+}

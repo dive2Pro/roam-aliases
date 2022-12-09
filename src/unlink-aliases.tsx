@@ -3,12 +3,12 @@ import {
   Button,
   ButtonGroup,
   Checkbox,
-  Label,
-  Tooltip,
   Icon,
   Popover,
   Menu,
   MenuItem,
+  FormGroup,
+  ControlGroup,
 } from "@blueprintjs/core";
 import React, { FC, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
@@ -16,8 +16,7 @@ import { PullBlock } from "roamjs-components/types";
 import { BreadcrumbsBlock } from "./breadcrumbs-block";
 import { extension_helper, keys, onRouteChange } from "./helper";
 import { roam, roamAliases } from "./roam";
-
-
+import { AliasesBlock } from "./type";
 
 const isPage = (block: PullBlock) => {
   return !!block[":node/title"];
@@ -72,9 +71,11 @@ const aliasesFilter = (alias: string, source: string) => {
   //   return true;
 };
 
+const dedupPullBlocks = (blocks: PullBlock[]) => {};
+
 const getPageGroupAllUnlinnkReferenceFromAliases = <T extends string>(
   //   exceptUids: string[],
-  allblocksAndPages: PullBlock[],
+  allblocksAndPages: AliasesBlock[],
   aliases: T[],
   caseSensive = true
 ) => {
@@ -84,24 +85,33 @@ const getPageGroupAllUnlinnkReferenceFromAliases = <T extends string>(
 
     aliases.forEach((alias) => {
       if (aliasesFilter(alias, s)) {
+        //   bp.aliases =
+        if (!bp.aliases) {
+          bp.aliases = new Set([alias]);
+        } else {
+          bp.aliases.add(alias);
+        }
         const id = (
           bp[":node/title"] ? bp[":db/id"] : bp[":block/page"][":db/id"] + ""
         ) as T;
         if (!p[id]) {
-          p[id] = [bp];
+          p[id] = new Set([bp]);
         } else {
-          p[id].push(bp);
+          p[id].add(bp);
         }
       }
     });
     return p;
-  }, {} as Record<T, PullBlock[]>);
-  return filtered;
+  }, new Set() as Record<T, Set<AliasesBlock>>);
+  return keys(filtered).reduce((p, c) => {
+    p[c] = [...filtered[c]];
+    return p;
+  }, {} as Record<T, AliasesBlock[]>);
 };
 
 const getGroupAllUnlinkReferenceFromAliases = <T extends string>(
   //   exceptUids: string[],
-  allblocksAndPages: PullBlock[],
+  allblocksAndPages: AliasesBlock[],
   aliases: T[],
   caseSensive = true
 ) => {
@@ -110,6 +120,11 @@ const getGroupAllUnlinkReferenceFromAliases = <T extends string>(
     const s = bp[":block/string"] || bp[":node/title"] || "";
     aliases.forEach((alias) => {
       if (aliasesFilter(alias, s)) {
+        if (!bp.aliases) {
+          bp.aliases = new Set([alias]);
+        } else {
+          bp.aliases.add(alias);
+        }
         if (!p[alias]) {
           p[alias] = [bp];
         } else {
@@ -118,13 +133,13 @@ const getGroupAllUnlinkReferenceFromAliases = <T extends string>(
       }
     });
     return p;
-  }, {} as Record<T, PullBlock[]>);
+  }, {} as Record<T, AliasesBlock[]>);
   return filtered;
 };
 
-const useTablePagination = (config: { max: number }) => {
+const useTablePagination = (config: { max: number; size: number }) => {
   const [state, _setState] = useState({
-    size: 1,
+    size: config.size,
     index: 0,
   });
   const setState = (partialState: Partial<typeof state>) => {
@@ -224,7 +239,7 @@ const Open: FC<ReturnType<typeof useOpenState>> = (props) => {
 };
 
 const GroupAlias = (props: { group: string; data: PullBlock[] }) => {
-  const tableState = useTablePagination({ max: props.data.length });
+  const tableState = useTablePagination({ max: props.data.length, size: 10 });
   const children = props.data
     .slice(tableState.pagination.start, tableState.pagination.end)
     .map((bp) => {
@@ -249,7 +264,7 @@ const GroupAlias = (props: { group: string; data: PullBlock[] }) => {
   const openState = useOpenState(true);
 
   return (
-    <div>
+    <div className="group group-alias">
       <Open {...openState}>
         <strong>{props.group}</strong>
       </Open>
@@ -275,7 +290,8 @@ const GroupPageAlias = (props: { id: string; data: PullBlock[] }) => {
   const openState = useOpenState(true);
   const page = roam.blockFromId(props.id);
   const data = props.data.filter((bp) => !bp[":node/title"]);
-  const tableState = useTablePagination({ max: data.length });
+  console.log(props, " === props", data);
+  const tableState = useTablePagination({ max: data.length, size: 10 });
   const content = data
     .slice(tableState.pagination.start, tableState.pagination.end)
     .map((bp) => {
@@ -286,7 +302,7 @@ const GroupPageAlias = (props: { id: string; data: PullBlock[] }) => {
       );
     });
   return (
-    <div>
+    <div className="group group-pages">
       <Open {...openState}>
         <strong>
           <a
@@ -309,19 +325,57 @@ const GroupPageAlias = (props: { id: string; data: PullBlock[] }) => {
   );
 };
 
-const GroupPages = (props: { data: Record<string, PullBlock[]> }) => {
+const GroupPages = (props: {
+  data: Record<string, AliasesBlock[]>;
+  aliases: string[];
+}) => {
   const tableState = useTablePagination({
     max: Object.keys(props.data).length,
+    size: 10,
   });
+  const [checked, setChecked] = useState(() =>
+    props.aliases.reduce((p, c) => {
+      p[c] = true;
+      return p;
+    }, {} as Record<string, boolean>)
+  );
 
   const data = keys(props.data)
     .slice(tableState.pagination.start, tableState.pagination.end)
     .map((id) => {
-      return <GroupPageAlias id={id} data={props.data[id]} />;
+      const pageData = props.data[id].filter((bp) => {
+        console.log(bp.aliases, checked, " - filter");
+        return [...bp.aliases].some((bpAlias) => {
+          return keys(checked)
+            .filter((k) => checked[k])
+            .includes(bpAlias);
+        });
+      });
+      if (pageData.length === 0) {
+        return null;
+      }
+      return <GroupPageAlias id={id} data={pageData} />;
     });
-  console.log(data, props, "----@");
   return (
-    <div>
+    <div className="">
+      <div style={{ marginTop: 5 }}>
+        {props.aliases.map((alias) => {
+          return (
+            <Checkbox
+              inline
+              checked={checked[alias]}
+              onChange={() => {
+                setChecked((prev) => ({
+                  ...prev,
+                  [alias]: !checked[alias],
+                }));
+              }}
+              alignIndicator="right"
+              label={alias}
+            />
+          );
+        })}
+      </div>
       {data}
       <TablePagination {...tableState} />
     </div>
@@ -361,7 +415,8 @@ const UnlinkAliases = ({ pageUid }: { pageUid: string }) => {
       allblocksAndPages,
       aliaseAndBlockUid[0]
     );
-    return <GroupPages data={groupPageIdData} />;
+
+    return <GroupPages data={groupPageIdData} aliases={aliaseAndBlockUid[0]} />;
   };
 
   const content = isGroupAliasMode
@@ -423,11 +478,6 @@ const UnlinkAliases = ({ pageUid }: { pageUid: string }) => {
         </div>
         {openState.open ? (
           <UnlinkAliasesContent>
-            <div style={{ marginTop: 5 }}>
-              {aliaseAndBlockUid[0].map((alias) => {
-                return <Checkbox inline alignIndicator="right" label={alias} />;
-              })}
-            </div>
             <div style={{ marginLeft: 10 }}>{content}</div>
           </UnlinkAliasesContent>
         ) : null}
