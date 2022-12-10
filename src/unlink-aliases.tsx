@@ -229,12 +229,14 @@ const useOpenState = (initialOpen = false) => {
   };
 };
 
-const Open: FC<ReturnType<typeof useOpenState>> = (props) => {
+const Open: FC<ReturnType<typeof useOpenState> & { className?: string }> = (
+  props
+) => {
   return (
     <div>
       <Icon
         icon={props.open ? "caret-down" : "caret-right"}
-        className="rm-caret bp3-icon-standard hover-opacity"
+        className={`rm-caret bp3-icon-standard hover-opacity ${props.className}`}
         onClick={() => props.setOpen(!props.open)}
         size={14}
       ></Icon>
@@ -270,7 +272,7 @@ const GroupAlias = (props: { group: string; data: PullBlock[] }) => {
 
   return (
     <div className="group group-alias">
-      <Open {...openState}>
+      <Open {...openState} className="visible">
         <strong>{props.group}</strong>
       </Open>
       {openState.open ? (
@@ -353,16 +355,27 @@ const GroupPages = (props: {
     }, {} as Record<string, boolean>);
   };
   const [checked, setChecked] = useState(() => initChecked());
-
+  const checkdHasData = useMemo(() => {
+    const set = new Set<string>();
+    keys(props.data).forEach((id) => {
+      props.data[id].forEach((bp) => {
+        [...bp.aliases].forEach((alias) => {
+          set.add(alias);
+        });
+      });
+    });
+    return [...set];
+  }, [props.data]);
   const data = keys(props.data)
     .slice(tableState.pagination.start, tableState.pagination.end)
     .map((id) => {
       const pageData = props.data[id].filter((bp) => {
         console.log(bp.aliases, checked, " - filter");
         return [...bp.aliases].some((bpAlias) => {
-          return keys(checked)
+          const result = keys(checked)
             .filter((k) => checked[k])
             .includes(bpAlias);
+          return result;
         });
       });
       if (pageData.length === 0) {
@@ -381,6 +394,7 @@ const GroupPages = (props: {
             return (
               <Checkbox
                 inline
+                disabled={!checkdHasData.includes(alias)}
                 checked={checked[alias]}
                 onChange={() => {
                   const nextChecked = {
@@ -483,6 +497,7 @@ const UnlinkAliases = ({ pageUid }: { pageUid: string }) => {
             setOpen={(next) => {
               openState.setOpen(next);
               saveConfigByUid(pageUid, { open: next ? "1" : "0" });
+              next && setUpdateKey((key) => key + 1);
             }}
           >
             <strong

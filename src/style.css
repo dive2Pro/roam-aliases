@@ -84,6 +84,11 @@
 .hover-opacity {
   opacity: 0;
   transition: 0.5s all;
+  cursor: pointer;
+}
+.visible {
+  opacity: 1;
+  padding: 2px;
 }
 .hover-opacity:hover {
   opacity: 1;
@@ -95,11 +100,16 @@
 
 .rm-unlink-aliases .group {
   background-color: #EBF1F5;
-  padding-top: 5px ;
+  padding: 5px 0px 2px;
   margin: 4px 8px;
 }
 
 .flex-row {
   display: flex;
   flex-direction: row;
+}
+
+
+.bp3-dark .rm-unlink-aliases .group {
+  background-color: var(--dark-bg-3, #354655);
 }
