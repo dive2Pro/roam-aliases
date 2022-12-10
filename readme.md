@@ -8,6 +8,10 @@
 ![](https://github.com/dive2Pro/roam-aliases/blob/master/demo.gif)
 
 
+
+https://user-images.githubusercontent.com/23192045/206823945-23c4262d-6ead-402d-ba25-4739af8ec323.mp4
+
+
 ---
 
 
@@ -19,4 +23,4 @@
 
 # todo
 
-- [ ] find unlinked aliases 
+- [x] find unlinked aliases 
