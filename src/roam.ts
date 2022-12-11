@@ -28,17 +28,24 @@ export const roamAliases = {
     ) as unknown as [string, string][];
 
     return result.map(([aliases, page]) => {
-      return [aliases.substring(PREFIX.length).split(",").map(s => s.trim()), page];
+      return [
+        aliases
+          .substring(PREFIX.length)
+          .split(",")
+          .map((s) => s.trim()),
+        page,
+      ];
     }) as [string[], string][];
   },
-  page: (uid: string) => {
+  page: (page: PullBlock) => {
+    // current page
     const result = window.roamAlphaAPI.q(
       `
     [
         :find  ?s ?uid
         :in $ %
         :where
-            [?parent :block/uid "${uid}"]
+            [?parent :block/uid "${page[":block/uid"]}"]
             (ancestor ?child ?parent)
             [?child :block/string ?s]
             [?child :block/uid ?uid]
@@ -48,9 +55,45 @@ export const roamAliases = {
 `,
       ancestorrule
     ) as unknown as [string, string][];
-    return result.map(([aliases, uid]) => {
-      return [aliases.substring(PREFIX.length).split(",").map( s=> s.trim()), uid];
+    const currentPageResult = result.map(([aliases, uid]) => {
+      return [
+        aliases
+          .substring(PREFIX.length)
+          .split(",")
+          .map((s) => s.trim()),
+        uid,
+      ];
     }) as [string[], string][];
+
+    const result2 = window.roamAlphaAPI.q(
+      `
+    [
+        :find  ?s ?uid
+        :in $ %
+        :where
+            (ancestor ?child ?parent)
+            [?child :block/string ?s]
+            [?child :block/uid ?uid]
+            [(clojure.string/starts-with? ?s  "${PREFIX}")]
+            [(clojure.string/includes? ?s  "${page[":node/title"]}")]
+    ]
+`,
+      ancestorrule
+    ) as unknown as [string, string][];
+    console.log(result2, " -------@", page[":node/title"], page);
+    const containsPageResult = result2.map(([aliases, uid]) => {
+      return [
+        aliases
+          .substring(PREFIX.length)
+          .split(",")
+          .map((s) => s.trim())
+          // 过滤掉等于当前页面的 alias
+          .filter(s => s!== page[":node/title"]),
+        uid,
+      ];
+    }) as [string[], string][];
+
+    return currentPageResult.concat(containsPageResult);
   },
   block: () => {},
 };
@@ -78,9 +121,11 @@ export const roam = {
     ]
     `
     ) as unknown as PullBlock[];
-    return allblocksAndPages.filter((bp) => {
-      return !uids.some((uid) => uid === bp[":block/uid"]);
-    }).map(item => ({...item}));
+    return allblocksAndPages
+      .filter((bp) => {
+        return !uids.some((uid) => uid === bp[":block/uid"]);
+      })
+      .map((item) => ({ ...item }));
   },
   blockFromId: (id: string) => {
     return window.roamAlphaAPI.data.fast.q(

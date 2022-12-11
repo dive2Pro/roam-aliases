@@ -44,8 +44,8 @@ const mountEl = () => {
   return div;
 };
 
-const getAllAliasesFromPageUid = (uid: string) => {
-  const aliasesForCurrentPage = roamAliases.page(uid);
+const getAllAliasesFromPage = (page: PullBlock) => {
+  const aliasesForCurrentPage = roamAliases.page(page);
   const aliases = aliasesForCurrentPage
     .map((item) => item[0])
     .reduce((p, c) => {
@@ -465,7 +465,7 @@ const UnlinkAliases = ({ page }: { page: PullBlock }) => {
   }, [isGroupAliasMode]);
   const [updateKey, setUpdateKey] = useState(0);
   const aliaseAndBlockUid = useMemo(() => {
-    const aliases = getAllAliasesFromPageUid(pageUid);
+    const aliases = getAllAliasesFromPage(page);
     return aliases;
   }, [pageUid, updateKey]);
 
