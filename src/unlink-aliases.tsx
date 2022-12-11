@@ -65,7 +65,12 @@ const aliasesFilter2 = (pageTitle: string, alias: string, source: string) => {
   if (!includes) {
     return false;
   }
-  return source.replaceAll(`[${alias}]([[${pageTitle}]])`, "").includes(alias);
+  return source
+    .replaceAll(`[${alias}]([[${pageTitle}]])`, "")
+    .replaceAll(`[[${pageTitle}]]`, "")
+    .replaceAll(`#[[${pageTitle}]]`, "")
+    .replaceAll(`#${pageTitle}`, "")
+    .includes(alias);
 };
 
 /**
@@ -454,26 +459,53 @@ const UnlinkAliasesContent: FC = (props) => {
 };
 
 const UnlinkAliases = ({ page }: { page: PullBlock }) => {
+  console.time("Unlink");
   const pageUid = page[":block/uid"];
   const config = readConfigFromUid(pageUid);
   const openState = useOpenState(config.open === "1");
+  const [loading, setLoading] = useState(false);
+  const [state, setState] = useState<
+    [Readonly<[string[], string[]]>, PullBlock[]]
+  >([[], []] as any);
+
   const [isGroupAliasMode, setIsGroupAliasMode] = useState(
     config.mode === "alias"
   );
+
   useEffect(() => {
     saveConfigByUid(pageUid, { mode: isGroupAliasMode ? "alias" : "page" });
   }, [isGroupAliasMode]);
-  const [updateKey, setUpdateKey] = useState(0);
-  const aliaseAndBlockUid = useMemo(() => {
-    const aliases = getAllAliasesFromPage(page);
-    return aliases;
-  }, [pageUid, updateKey]);
 
-  const exceptUids = [pageUid, ...aliaseAndBlockUid[1]];
+  const update = async () => {
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 10))
+    const aliases = await getAllAliasesFromPage(page);
+    const exceptUids = [pageUid, ...aliases[1]];
+    const allblocksAndPages = await roam.allBlockAndPagesExceptUids(exceptUids);
+    setLoading(false);
+    setState([aliases, allblocksAndPages]);
+  };
 
-  const allblocksAndPages = useMemo(() => {
-    return roam.allBlockAndPagesExceptUids(exceptUids);
-  }, [pageUid, updateKey]);
+  useEffect(() => {
+    console.log('page -----')
+    update();
+  }, [pageUid]);
+
+  const [aliaseAndBlockUid, allblocksAndPages] = state;
+
+  // const aliaseAndBlockUid = useMemo(() => {
+  //   const aliases = getAllAliasesFromPage(page);
+  //   return aliases;
+  // }, [pageUid, updateKey]);
+
+  // const exceptUids = [pageUid, ...aliaseAndBlockUid[1]];
+
+  // console.time("t1");
+  // const allblocksAndPages = useMemo(() => {
+  //   console.log("memo", pageUid);
+  //   return roam.allBlockAndPagesExceptUids(exceptUids);
+  // }, [pageUid, updateKey]);
+  // console.timeEnd("t1");
 
   const groupUnlinkReferences = () => {
     const groupData = getGroupAllUnlinkReferenceFromAliases(
@@ -505,8 +537,10 @@ const UnlinkAliases = ({ page }: { page: PullBlock }) => {
   const content = isGroupAliasMode
     ? groupUnlinkReferences()
     : groupByPageUnlinkReferences();
+  console.timeEnd("Unlink");
+
   return (
-    <div className="rm-mentions refs-by-page-view">
+    <div className="">
       <div
         className="rm-ref-page-view"
         style={{ margin: "-4px -4px 0px -16px" }}
@@ -517,7 +551,7 @@ const UnlinkAliases = ({ page }: { page: PullBlock }) => {
             setOpen={(next) => {
               openState.setOpen(next);
               saveConfigByUid(pageUid, { open: next ? "1" : "0" });
-              next && setUpdateKey((key) => key + 1);
+              next && update();
             }}
           >
             <strong
@@ -556,7 +590,7 @@ const UnlinkAliases = ({ page }: { page: PullBlock }) => {
                       text={"Refresh"}
                       icon="refresh"
                       onClick={() => {
-                        setUpdateKey((prev) => prev + 1);
+                        update();
                       }}
                     />
                   </Menu>
@@ -577,10 +611,12 @@ const UnlinkAliases = ({ page }: { page: PullBlock }) => {
           ) : null}
         </div>
         {openState.open ? (
-          <UnlinkAliasesContent>
-            <div style={{ marginLeft: 10, marginTop: 10 }}>{content}</div>
-          </UnlinkAliasesContent>
-        ) : null}
+          <div style={{ marginLeft: 10, marginTop: 10 }}>
+            {loading ? <div>...</div> : content}
+          </div>
+        ) : (
+          <div />
+        )}
       </div>
     </div>
   );
