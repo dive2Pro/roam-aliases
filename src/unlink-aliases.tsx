@@ -55,6 +55,22 @@ const getAllAliasesFromPageUid = (uid: string) => {
   return [aliases, aliasesBlockUids] as const;
 };
 
+/**
+ *
+ * 检查除了 `[alias]([[target title]])` 外是否还有 alias 字符存在于 source 中
+ *
+ */
+const aliasesFilter2 = (pageTitle: string, alias: string, source: string) => {
+  const includes = source.includes(alias);
+  if (!includes) {
+    return false;
+  }
+  return source.replaceAll(`[${alias}]([[${pageTitle}]])`, "").includes(alias);
+};
+
+/**
+ * 检查除了 `[]([[]])`外, 还过滤了 `[[alias]]` 和 `[alias]([[...]]) `
+ */
 const aliasesFilter = (alias: string, source: string) => {
   // 不包含 `[[alias]]` 也不包括 `[alias]([[]])` 后, 还包含 alias
   const includes = source.includes(alias);
@@ -79,7 +95,7 @@ const aliasesFilter = (alias: string, source: string) => {
 const dedupPullBlocks = (blocks: PullBlock[]) => {};
 
 const getPageGroupAllUnlinnkReferenceFromAliases = <T extends string>(
-  //   exceptUids: string[],
+  pageTitle: string,
   allblocksAndPages: AliasesBlock[],
   aliases: T[],
   caseSensive = true
@@ -89,7 +105,7 @@ const getPageGroupAllUnlinnkReferenceFromAliases = <T extends string>(
     const s = bp[":block/string"] || bp[":node/title"] || "";
 
     aliases.forEach((alias) => {
-      if (aliasesFilter(alias, s)) {
+      if (aliasesFilter2(pageTitle, alias, s)) {
         //   bp.aliases =
         if (!bp.aliases) {
           bp.aliases = new Set([alias]);
@@ -116,6 +132,7 @@ const getPageGroupAllUnlinnkReferenceFromAliases = <T extends string>(
 
 const getGroupAllUnlinkReferenceFromAliases = <T extends string>(
   //   exceptUids: string[],
+  pageTitle: string,
   allblocksAndPages: AliasesBlock[],
   aliases: T[],
   caseSensive = true
@@ -124,7 +141,7 @@ const getGroupAllUnlinkReferenceFromAliases = <T extends string>(
   const filtered = allblocksAndPages.reduce((p, bp) => {
     const s = bp[":block/string"] || bp[":node/title"] || "";
     aliases.forEach((alias) => {
-      if (aliasesFilter(alias, s)) {
+      if (aliasesFilter2(pageTitle, alias, s)) {
         if (!bp.aliases) {
           bp.aliases = new Set([alias]);
         } else {
@@ -436,7 +453,8 @@ const UnlinkAliasesContent: FC = (props) => {
   return <>{props.children}</>;
 };
 
-const UnlinkAliases = ({ pageUid }: { pageUid: string }) => {
+const UnlinkAliases = ({ page }: { page: PullBlock }) => {
+  const pageUid = page[":block/uid"];
   const config = readConfigFromUid(pageUid);
   const openState = useOpenState(config.open === "1");
   const [isGroupAliasMode, setIsGroupAliasMode] = useState(
@@ -459,6 +477,7 @@ const UnlinkAliases = ({ pageUid }: { pageUid: string }) => {
 
   const groupUnlinkReferences = () => {
     const groupData = getGroupAllUnlinkReferenceFromAliases(
+      page[":node/title"],
       allblocksAndPages,
       aliaseAndBlockUid[0]
     );
@@ -469,6 +488,7 @@ const UnlinkAliases = ({ pageUid }: { pageUid: string }) => {
 
   const groupByPageUnlinkReferences = () => {
     const groupPageIdData = getPageGroupAllUnlinnkReferenceFromAliases(
+      page[":node/title"],
       allblocksAndPages,
       aliaseAndBlockUid[0]
     );
@@ -579,7 +599,7 @@ const init = async () => {
   }
   // check if
   const el = mountEl();
-  ReactDOM.render(<UnlinkAliases pageUid={pageOrBlockUid} />, el);
+  ReactDOM.render(<UnlinkAliases page={block} />, el);
 };
 
 export const unlinkAliasesInit = () => {
