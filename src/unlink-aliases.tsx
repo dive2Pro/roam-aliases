@@ -7,21 +7,20 @@ import {
   Popover,
   Menu,
   MenuItem,
-  FormGroup,
-  ControlGroup,
 } from "@blueprintjs/core";
 import React, { FC, useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
 import { PullBlock } from "roamjs-components/types";
 import { BreadcrumbsBlock } from "./breadcrumbs-block";
+import { readConfigFromUid, saveConfigByUid } from "./config-settings";
 import {
-  readConfigFromUid,
-  resetConfigByUid,
-  saveConfigByUid,
-} from "./config-settings";
+  useHighlightUnlinkAliases,
+  useHighlightWordsInDom,
+} from "./find-and-replace-text-in-dom";
 import { extension_helper, keys, onRouteChange } from "./helper";
 import { roam, roamAliases } from "./roam";
 import { AliasesBlock } from "./type";
+import fd from "findandreplacedomtext";
 
 const isPage = (block: PullBlock) => {
   return !!block[":node/title"];
@@ -57,7 +56,8 @@ const getAllAliasesFromPage = (page: PullBlock) => {
 
 /**
  *
- * 检查除了 `[alias]([[target title]])` 外是否还有 alias 字符存在于 source 中
+ * 检查除了 `[alias]([[target title]])`, `[[{pageTitle}]]`, `#{pageTitle}` 外
+ * 是否还有 alias 字符存在于 source 中
  *
  */
 const aliasesFilter2 = (pageTitle: string, alias: string, source: string) => {
@@ -99,34 +99,45 @@ const aliasesFilter = (alias: string, source: string) => {
 
 const dedupPullBlocks = (blocks: PullBlock[]) => {};
 
-const getPageGroupAllUnlinnkReferenceFromAliases = <T extends string>(
+const addAliasesToBP = (
   pageTitle: string,
   allblocksAndPages: AliasesBlock[],
-  aliases: T[],
-  caseSensive = true
+  aliases: string[]
 ) => {
-  //   console.log(allblocksAndPages, "@-", exceptUids);
-  const filtered = allblocksAndPages.reduce((p, bp) => {
+  return allblocksAndPages.filter((bp) => {
     const s = bp[":block/string"] || bp[":node/title"] || "";
-
     aliases.forEach((alias) => {
-      if (aliasesFilter2(pageTitle, alias, s)) {
-        //   bp.aliases =
+      const r = aliasesFilter2(pageTitle, alias, s);
+      if (r) {
         if (!bp.aliases) {
           bp.aliases = new Set([alias]);
         } else {
           bp.aliases.add(alias);
         }
-        const id = (
-          bp[":node/title"] ? bp[":db/id"] : bp[":block/page"][":db/id"] + ""
-        ) as T;
-        if (!p[id]) {
-          p[id] = new Set([bp]);
-        } else {
-          p[id].add(bp);
-        }
       }
     });
+    return s;
+  });
+};
+
+const getPageGroupAllUnlinnkReferenceFromAliases = <T extends string>(
+  allblocksAndPages: AliasesBlock[],
+  aliases: T[],
+  caseSensive = true
+) => {
+  // console.log(allblocksAndPages, "@-@");
+  const filtered = allblocksAndPages.reduce((p, bp) => {
+    if (!bp.aliases) {
+      return p;
+    }
+    const id = (
+      bp[":node/title"] ? bp[":db/id"] : bp[":block/page"][":db/id"] + ""
+    ) as T;
+    if (!p[id]) {
+      p[id] = new Set([bp]);
+    } else {
+      p[id].add(bp);
+    }
     return p;
   }, new Set() as Record<T, Set<AliasesBlock>>);
   return keys(filtered).reduce((p, c) => {
@@ -136,27 +147,20 @@ const getPageGroupAllUnlinnkReferenceFromAliases = <T extends string>(
 };
 
 const getGroupAllUnlinkReferenceFromAliases = <T extends string>(
-  //   exceptUids: string[],
-  pageTitle: string,
   allblocksAndPages: AliasesBlock[],
   aliases: T[],
   caseSensive = true
 ) => {
   //   console.log(allblocksAndPages, "@-", exceptUids);
   const filtered = allblocksAndPages.reduce((p, bp) => {
-    const s = bp[":block/string"] || bp[":node/title"] || "";
-    aliases.forEach((alias) => {
-      if (aliasesFilter2(pageTitle, alias, s)) {
-        if (!bp.aliases) {
-          bp.aliases = new Set([alias]);
-        } else {
-          bp.aliases.add(alias);
-        }
-        if (!p[alias]) {
-          p[alias] = [bp];
-        } else {
-          p[alias].push(bp);
-        }
+    if (!bp.aliases) {
+      return p;
+    }
+    [...bp.aliases].forEach((alias: T) => {
+      if (!p[alias]) {
+        p[alias] = [bp];
+      } else {
+        p[alias].push(bp);
       }
     });
     return p;
@@ -291,7 +295,20 @@ const GroupAlias = (props: { group: string; data: PullBlock[] }) => {
       );
     });
   const openState = useOpenState(true);
-
+  // useHighlightWordsInDom(".rm-unlink-aliases", (el) => {
+  //   fd(el, {
+  //     find: new RegExp(`(([\S]{2})?)${}(([\S]{2})?)`),
+  //     wrap: "span",
+  //     wrapClass: "unlink-word",
+  //   });
+  // });
+  useHighlightWordsInDom(".rm-unlink-aliases", (el) => {
+    fd(el, {
+      find: props.group,
+      wrap: "span",
+      wrapClass: "unlink-word",
+    });
+  });
   return (
     <div className="group group-alias">
       <Open {...openState} className="visible">
@@ -392,7 +409,6 @@ const GroupPages = (props: {
     .slice(tableState.pagination.start, tableState.pagination.end)
     .map((id) => {
       const pageData = props.data[id].filter((bp) => {
-        console.log(bp.aliases, checked, " - filter");
         return [...bp.aliases].some((bpAlias) => {
           const result = keys(checked)
             .filter((k) => checked[k])
@@ -405,6 +421,19 @@ const GroupPages = (props: {
       }
       return <GroupPageAlias id={id} data={pageData} />;
     });
+  useHighlightWordsInDom(".rm-unlink-aliases", (el) => {
+    props.aliases
+      .filter((alias) => {
+        return checked[alias];
+      })
+      .forEach((alias) => {
+        fd(el, {
+          find: alias,
+          wrap: "span",
+          wrapClass: "unlink-word",
+        });
+      });
+  });
   return (
     <div className="">
       <div
@@ -454,19 +483,13 @@ const GroupPages = (props: {
   );
 };
 
-const UnlinkAliasesContent: FC = (props) => {
-  return <>{props.children}</>;
-};
-
-const UnlinkAliases = ({ page }: { page: PullBlock }) => {
+const UnlinkAliases = ({ page }: { page: Partial<PullBlock> }) => {
   console.time("Unlink");
   const pageUid = page[":block/uid"];
   const config = readConfigFromUid(pageUid);
   const openState = useOpenState(config.open === "1");
   const [loading, setLoading] = useState(false);
-  const [state, setState] = useState<
-    [Readonly<[string[], string[]]>, PullBlock[]]
-  >([[], []] as any);
+  const [state, setState] = useState<[string[], PullBlock[]]>([[], []] as any);
 
   const [isGroupAliasMode, setIsGroupAliasMode] = useState(
     config.mode === "alias"
@@ -478,20 +501,22 @@ const UnlinkAliases = ({ page }: { page: PullBlock }) => {
 
   const update = async () => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 10))
+    await new Promise((resolve) => setTimeout(resolve, 10));
     const aliases = await getAllAliasesFromPage(page);
     const exceptUids = [pageUid, ...aliases[1]];
     const allblocksAndPages = await roam.allBlockAndPagesExceptUids(exceptUids);
     setLoading(false);
-    setState([aliases, allblocksAndPages]);
+    setState([
+      aliases[0],
+      addAliasesToBP(page[":node/title"], allblocksAndPages, aliases[0]),
+    ]);
   };
 
   useEffect(() => {
-    console.log('page -----')
     update();
   }, [pageUid]);
 
-  const [aliaseAndBlockUid, allblocksAndPages] = state;
+  const [aliase, allblocksAndPages] = state;
 
   // const aliaseAndBlockUid = useMemo(() => {
   //   const aliases = getAllAliasesFromPage(page);
@@ -506,12 +531,10 @@ const UnlinkAliases = ({ page }: { page: PullBlock }) => {
   //   return roam.allBlockAndPagesExceptUids(exceptUids);
   // }, [pageUid, updateKey]);
   // console.timeEnd("t1");
-
   const groupUnlinkReferences = () => {
     const groupData = getGroupAllUnlinkReferenceFromAliases(
-      page[":node/title"],
       allblocksAndPages,
-      aliaseAndBlockUid[0]
+      aliase
     );
     return keys(groupData).map((key) => {
       return <GroupAlias group={key} data={groupData[key]}></GroupAlias>;
@@ -520,16 +543,16 @@ const UnlinkAliases = ({ page }: { page: PullBlock }) => {
 
   const groupByPageUnlinkReferences = () => {
     const groupPageIdData = getPageGroupAllUnlinnkReferenceFromAliases(
-      page[":node/title"],
       allblocksAndPages,
-      aliaseAndBlockUid[0]
+      aliase
     );
-
+    console.log(groupPageIdData, " d data");
     return (
       <GroupPages
         pageUid={pageUid}
         data={groupPageIdData}
-        aliases={aliaseAndBlockUid[0]}
+        aliases={aliase}
+        key={aliase.join(",")}
       />
     );
   };

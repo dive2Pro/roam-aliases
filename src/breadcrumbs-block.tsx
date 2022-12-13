@@ -41,7 +41,7 @@ const BlockEdit = ({ uid }: { uid: string }) => {
     window.roamAlphaAPI.ui.components.renderBlock({ uid, el: ref.current });
     return () => {};
   }, [uid]);
-  return <div ref={ref} />;
+  return <div className="rm-block-el" ref={ref} />;
 };
 
 export function BreadcrumbsBlock(props: { uid: string; showPage?: boolean }) {

@@ -1,7 +1,7 @@
-import React, { ReactNode, useEffect } from "react";
+import React, { ReactNode } from "react";
 import ReactDom from "react-dom";
 import { debounce, extension_helper } from "./helper";
-import { Button, Divider, Icon, Label } from "@blueprintjs/core";
+import { Button, Icon } from "@blueprintjs/core";
 import "./style.css";
 import "arrive";
 import { unlinkAliasesInit } from "./unlink-aliases";
