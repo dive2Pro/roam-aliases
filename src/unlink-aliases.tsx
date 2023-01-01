@@ -8,7 +8,7 @@ import {
   Menu,
   MenuItem,
 } from "@blueprintjs/core";
-import React, { FC, useEffect, useMemo, useState } from "react";
+import React, { FC, useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import { PullBlock } from "roamjs-components/types";
 import { BreadcrumbsBlock } from "./breadcrumbs-block";
@@ -21,6 +21,8 @@ import { extension_helper, keys, onRouteChange } from "./helper";
 import { roam, roamAliases } from "./roam";
 import { AliasesBlock } from "./type";
 import fd from "findandreplacedomtext";
+
+const delay = (ms = 10) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const isPage = (block: PullBlock) => {
   return !!block[":node/title"];
@@ -65,6 +67,7 @@ const aliasesFilter2 = (pageTitle: string, alias: string, source: string) => {
   if (!includes) {
     return false;
   }
+  // console.log(includes, ' = include', source, alias)
   return source
     .replaceAll(`[${alias}]([[${pageTitle}]])`, "")
     .replaceAll(`[[${pageTitle}]]`, "")
@@ -102,13 +105,22 @@ const dedupPullBlocks = (blocks: PullBlock[]) => {};
 const addAliasesToBP = (
   pageTitle: string,
   allblocksAndPages: AliasesBlock[],
+  exceptUids: string[],
   aliases: string[]
 ) => {
-  return allblocksAndPages.filter((bp) => {
+  return allblocksAndPages.map((bp) => {
+    if (
+      exceptUids.some((uid) => {
+        return uid === bp[":block/uid"];
+      })
+    ) {
+      return bp;
+    }
     const s = bp[":block/string"] || bp[":node/title"] || "";
     aliases.forEach((alias) => {
       const r = aliasesFilter2(pageTitle, alias, s);
       if (r) {
+        bp = { ...bp };
         if (!bp.aliases) {
           bp.aliases = new Set([alias]);
         } else {
@@ -116,7 +128,7 @@ const addAliasesToBP = (
         }
       }
     });
-    return s;
+    return bp;
   });
 };
 
@@ -484,7 +496,6 @@ const GroupPages = (props: {
 };
 
 const UnlinkAliases = ({ page }: { page: Partial<PullBlock> }) => {
-  console.time("Unlink");
   const pageUid = page[":block/uid"];
   const config = readConfigFromUid(pageUid);
   const openState = useOpenState(config.open === "1");
@@ -498,18 +509,42 @@ const UnlinkAliases = ({ page }: { page: Partial<PullBlock> }) => {
   useEffect(() => {
     saveConfigByUid(pageUid, { mode: isGroupAliasMode ? "alias" : "page" });
   }, [isGroupAliasMode]);
-
-  const update = async () => {
+  const isMounted = useRef(false);
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+  const checkMount = () => {
+    if (!isMounted.current) {
+      throw new Error("Comp Unmounted");
+    }
+  };
+  const update = async (reset = false) => {
     setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    checkMount();
     const aliases = await getAllAliasesFromPage(page);
+    checkMount();
     const exceptUids = [pageUid, ...aliases[1]];
-    const allblocksAndPages = await roam.allBlockAndPagesExceptUids(exceptUids);
+    await delay(10);
+    console.time("Unlink");
+    const allblocksAndPages = await roam.allBlockAndPages(exceptUids, reset);
+    checkMount();
+    await delay(10);
     setLoading(false);
+    const v = addAliasesToBP(
+      page[":node/title"],
+      allblocksAndPages,
+      exceptUids,
+      aliases[0]
+    );
+    // console.log(v,'=v', aliases[0])
     setState([
       aliases[0],
-      addAliasesToBP(page[":node/title"], allblocksAndPages, aliases[0]),
+      v
     ]);
+    console.timeEnd("Unlink");
   };
 
   useEffect(() => {
@@ -546,7 +581,7 @@ const UnlinkAliases = ({ page }: { page: Partial<PullBlock> }) => {
       allblocksAndPages,
       aliase
     );
-    console.log(groupPageIdData, " d data");
+    // console.log(groupPageIdData, " d data");
     return (
       <GroupPages
         pageUid={pageUid}
@@ -560,7 +595,6 @@ const UnlinkAliases = ({ page }: { page: Partial<PullBlock> }) => {
   const content = isGroupAliasMode
     ? groupUnlinkReferences()
     : groupByPageUnlinkReferences();
-  console.timeEnd("Unlink");
 
   return (
     <div className="">
@@ -613,7 +647,7 @@ const UnlinkAliases = ({ page }: { page: Partial<PullBlock> }) => {
                       text={"Refresh"}
                       icon="refresh"
                       onClick={() => {
-                        update();
+                        update(true);
                       }}
                     />
                   </Menu>
@@ -662,6 +696,12 @@ const init = async () => {
 };
 
 export const unlinkAliasesInit = () => {
-  extension_helper.on_uninstall(onRouteChange(init));
+  extension_helper.on_uninstall(
+    onRouteChange(() => {
+      setTimeout(() => {
+        init();
+      }, 200);
+    })
+  );
   init();
 };

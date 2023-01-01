@@ -46,7 +46,7 @@ export const roamAliases = {
         :in $ %
         :where
             [?parent :block/uid "${page[":block/uid"]}"]
-            (ancestor ?child ?parent)
+            [?child :block/page ?parent]
             [?child :block/string ?s]
             [?child :block/uid ?uid]
             [(clojure.string/starts-with? ?s  "${PREFIX}")]
@@ -71,7 +71,7 @@ export const roamAliases = {
         :find  ?s ?uid
         :in $ %
         :where
-            (ancestor ?child ?parent)
+            [?child :block/page ?parent]
             [?child :block/string ?s]
             [?child :block/uid ?uid]
             [(clojure.string/starts-with? ?s  "${PREFIX}")]
@@ -88,7 +88,7 @@ export const roamAliases = {
           .split(",")
           .map((s) => s.trim())
           // 过滤掉等于当前页面的 alias
-          .filter(s => s!== page[":node/title"]),
+          .filter((s) => s !== page[":node/title"]),
         uid,
       ];
     }) as [string[], string][];
@@ -98,34 +98,27 @@ export const roamAliases = {
   block: () => {},
 };
 
+let _allblocks: PullBlock[];
+const allBlocks = () => {
+  const allblocksAndPages = window.roamAlphaAPI.data.fast.q(
+    `
+    [
+      :find [(pull ?e [*]) ...]
+      :where
+       [?e :block/uid]
+    ]
+    `
+  ) as unknown as PullBlock[];
+  return allblocksAndPages;
+};
+
 export const roam = {
-  allBlockAndPages: () => {
-    const allblocksAndPages = window.roamAlphaAPI.data.fast.q(
-      `
-    [
-      :find [(pull ?e [*]) ...]
-      :where
-       [?e :block/uid]
-    ]
-    `
-    ) as unknown as PullBlock[];
+  allBlockAndPages: (uids: string[], reset = false) => {
+    if (reset || !_allblocks) {
+      _allblocks = allBlocks();
+    }
+    var allblocksAndPages = _allblocks;
     return allblocksAndPages;
-  },
-  allBlockAndPagesExceptUids: (uids: string[]) => {
-    var allblocksAndPages = window.roamAlphaAPI.data.fast.q(
-      `
-    [
-      :find [(pull ?e [*]) ...]
-      :where
-       [?e :block/uid]
-    ]
-    `
-    ) as unknown as PullBlock[];
-    return allblocksAndPages
-      .filter((bp) => {
-        return !uids.some((uid) => uid === bp[":block/uid"]);
-      })
-      .map((item) => ({ ...item }));
   },
   blockFromId: (id: string) => {
     return window.roamAlphaAPI.data.fast.q(
