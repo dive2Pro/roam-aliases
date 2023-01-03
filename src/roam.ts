@@ -19,17 +19,15 @@ export const roamAliases = {
       `
     [
         :find  ?s ?t
-        :in $ %
         :where
             [?parent :node/title ?t]
-            (ancestor ?child ?parent)
+            [?child :block/page ?parent]
             [?child :block/string ?s]
             [(clojure.string/starts-with? ?s  "${PREFIX}")]
             [?child :block/string ?e]
     ]
     
 `,
-      ancestorrule
     ) as unknown as [string, string][];
 
     return result.map(([aliases, page]) => {
