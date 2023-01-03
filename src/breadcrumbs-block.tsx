@@ -49,7 +49,7 @@ export function BreadcrumbsBlock(props: { uid: string; showPage?: boolean }) {
   const [parents, setParents] = useState<ReversePullBlock[]>([]);
   useEffect(() => {
     const parentsBlocks = getStrFromParentsOf(uid);
-    console.log(parentsBlocks);
+    // console.log(parentsBlocks);
     setParents(props.showPage ? parentsBlocks : parentsBlocks.slice(1));
   }, [uid, props.showPage]);
 
@@ -63,7 +63,7 @@ export function BreadcrumbsBlock(props: { uid: string; showPage?: boolean }) {
             .closest("div.rm-block-main")
             .querySelector("div.rm-block__input");
           const tuid = t.id.split("").splice(-10).join("").replace(/^-/, "");
-          console.log(tuid, target.className, uid, parents)
+          // console.log(tuid, target.className, uid, parents)
           if (target.classList.contains("rm-caret") && props.showPage && parents.length === 0) {
             if (tuid === uid) {
               setUid(props.uid);

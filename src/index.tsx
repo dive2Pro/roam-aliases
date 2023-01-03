@@ -108,7 +108,7 @@ function renderAliases(
     });
   }
   el.onscroll = function (e) {
-    console.log(el.scrollTop, " top");
+    // console.log(el.scrollTop, " top");
     if (menuEl.offsetHeight < el.offsetHeight) {
       menuEl.style.top = el.scrollTop + "px";
     }

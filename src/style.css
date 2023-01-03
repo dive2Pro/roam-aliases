@@ -101,7 +101,7 @@
 }
 
 .rm-unlink-aliases .group {
-  background-color: #EBF1F5;
+  background-color: #ebf1f5;
   padding: 5px 0px 2px;
   margin: 4px 8px;
 }
@@ -111,7 +111,6 @@
   flex-direction: row;
 }
 
-
 .bp3-dark .rm-unlink-aliases .group {
   background-color: var(--dark-bg-3, #354655);
 }
@@ -119,6 +118,7 @@
 .unlink-word {
   text-decoration-style: solid;
   text-decoration-line: wavy;
-  text-decoration-color: #F5498B;
-  text-decoration-thickness: 2px;
+  text-decoration-color: #cd4246;
+  text-decoration-thickness: 4px;
+  text-decoration-line: underline;
 }

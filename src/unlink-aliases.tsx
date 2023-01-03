@@ -102,6 +102,7 @@ const aliasesFilter = (alias: string, source: string) => {
 
 const dedupPullBlocks = (blocks: PullBlock[]) => {};
 
+// TODO 初始化是添加状态提示,并使用 edit time 在开关时刷新当前页面
 const addAliasesToBP = (
   pageTitle: string,
   allblocksAndPages: AliasesBlock[],
@@ -138,12 +139,23 @@ const getPageGroupAllUnlinnkReferenceFromAliases = <T extends string>(
   caseSensive = true
 ) => {
   // console.log(allblocksAndPages, "@-@");
+  const aliasesCountMap = new Map<string, number>();
+  const aliasesGroup = new Map<string, AliasesBlock[]>();
   const filtered = allblocksAndPages.reduce((p, bp) => {
-    if (!bp.aliases) {
+    if (!bp.aliases || !aliases.some((alias) => bp.aliases.has(alias))) {
       return p;
     }
+    // console.log(bp, '--')
+    // [...bp.aliases].forEach((alias) => {
+    //   aliasesGroup.set(alias, aliasesGroup.get(alias) ?? []);
+    //   aliasesGroup.get(alias).push(bp);
+    //   aliasesCountMap.set(
+    //     alias,
+    //     aliasesCountMap.get(alias) ? aliasesCountMap.get(alias) : 1
+    //   );
+    // });
     const id = (
-      bp[":node/title"] ? bp[":db/id"] : bp[":block/page"][":db/id"] + ""
+      bp[":node/title"] ? bp[":db/id"] : bp[":block/page"]?.[":db/id"] + ""
     ) as T;
     if (!p[id]) {
       p[id] = new Set([bp]);
@@ -208,6 +220,9 @@ const useTablePagination = (config: { max: number; size: number }) => {
     hasPrev() {
       return state.index !== 0;
     },
+    getSize() {
+      return state.size;
+    },
     setSize(size: number) {
       setState({ size, index: 0 });
     },
@@ -215,6 +230,9 @@ const useTablePagination = (config: { max: number; size: number }) => {
     pagination: {
       start: state.index * state.size,
       end: (state.index + 1) * state.size,
+    },
+    setPage(i: number) {
+      setState({ index: 0 });
     },
   };
 };
@@ -348,7 +366,7 @@ const GroupPageAlias = (props: { id: string; data: PullBlock[] }) => {
   const openState = useOpenState(true);
   const page = roam.blockFromId(props.id);
   const data = props.data.filter((bp) => !bp[":node/title"]);
-  console.log(props, " === props", data);
+  // console.log(props, " === props", data);
   const tableState = useTablePagination({ max: data.length, size: 10 });
   const content = data
     .slice(tableState.pagination.start, tableState.pagination.end)
@@ -383,15 +401,16 @@ const GroupPageAlias = (props: { id: string; data: PullBlock[] }) => {
   );
 };
 
+/**
+ */
 const GroupPages = (props: {
-  data: Record<string, AliasesBlock[]>;
+  // groupData: Readonly<[Record<string, AliasesBlock[]>, Map<string, number>]>;
+  allblocksAndPages: PullBlock[];
   aliases: string[];
   pageUid: string;
 }) => {
-  const tableState = useTablePagination({
-    max: Object.keys(props.data).length,
-    size: 10,
-  });
+  // const [propsData] = props.groupData;
+
   const config = readConfigFromUid(props.pageUid);
   const resetChecked = () => {
     return props.aliases.reduce((p, c) => {
@@ -406,21 +425,34 @@ const GroupPages = (props: {
     }, {} as Record<string, boolean>);
   };
   const [checked, setChecked] = useState(() => initChecked());
-  const checkdHasData = useMemo(() => {
-    const set = new Set<string>();
-    keys(props.data).forEach((id) => {
-      props.data[id].forEach((bp) => {
-        [...bp.aliases].forEach((alias) => {
-          set.add(alias);
-        });
-      });
-    });
-    return [...set];
-  }, [props.data]);
-  const data = keys(props.data)
+  const validData = useMemo(() => {
+    const groupPageIdData = getPageGroupAllUnlinnkReferenceFromAliases(
+      props.allblocksAndPages,
+      keys(checked).filter((key) => checked[key])
+    );
+    return groupPageIdData;
+  }, [checked]);
+  const tableState = useTablePagination({
+    max: keys(validData).length,
+    size: 10,
+  });
+
+  // const checkdHasData = useMemo(() => {
+  //   const set = new Set<string>();
+  //   keys(validData).forEach((id) => {
+  //     validData[id].forEach((bp) => {
+  //       [...bp.aliases].forEach((alias) => {
+  //         set.add(alias);
+  //       });
+  //     });
+  //   });
+  //   return [...set];
+  // }, [validData]);
+  // validData = [];
+  const data = keys(validData)
     .slice(tableState.pagination.start, tableState.pagination.end)
     .map((id) => {
-      const pageData = props.data[id].filter((bp) => {
+      const pageData = validData[id].filter((bp) => {
         return [...bp.aliases].some((bpAlias) => {
           const result = keys(checked)
             .filter((k) => checked[k])
@@ -446,6 +478,7 @@ const GroupPages = (props: {
         });
       });
   });
+  // console.log(data, "---");
   return (
     <div className="">
       <div
@@ -457,13 +490,14 @@ const GroupPages = (props: {
             return (
               <Checkbox
                 inline
-                disabled={!checkdHasData.includes(alias)}
+                // disabled={!checkdHasData.includes(alias)}
                 checked={checked[alias]}
                 onChange={() => {
                   const nextChecked = {
                     ...checked,
                     [alias]: !checked[alias],
                   };
+                  tableState.setPage(0);
                   setChecked(nextChecked);
                   saveConfigByUid(props.pageUid, {
                     checked: nextChecked,
@@ -523,27 +557,29 @@ const UnlinkAliases = ({ page }: { page: Partial<PullBlock> }) => {
   };
   const update = async (reset = false) => {
     setLoading(true);
-    checkMount();
+    // checkMount();
+    console.time("Unlink");
     const aliases = await getAllAliasesFromPage(page);
-    checkMount();
+    // checkMount();
     const exceptUids = [pageUid, ...aliases[1]];
     await delay(10);
-    console.time("Unlink");
-    const allblocksAndPages = await roam.allBlockAndPages(exceptUids, reset);
-    checkMount();
-    await delay(10);
+    if (aliases[0].length) {
+      const allblocksAndPages = await roam.allBlockAndPages(exceptUids, reset);
+      checkMount();
+      await delay(10);
+      // console.time("add");
+      const v = addAliasesToBP(
+        page[":node/title"],
+        allblocksAndPages,
+        exceptUids,
+        aliases[0]
+      );
+      // console.timeEnd("add");
+      await delay(10);
+      setState([aliases[0], v]);
+      // console.log("=v", aliases, v);
+    }
     setLoading(false);
-    const v = addAliasesToBP(
-      page[":node/title"],
-      allblocksAndPages,
-      exceptUids,
-      aliases[0]
-    );
-    // console.log(v,'=v', aliases[0])
-    setState([
-      aliases[0],
-      v
-    ]);
     console.timeEnd("Unlink");
   };
 
@@ -577,15 +613,10 @@ const UnlinkAliases = ({ page }: { page: Partial<PullBlock> }) => {
   };
 
   const groupByPageUnlinkReferences = () => {
-    const groupPageIdData = getPageGroupAllUnlinnkReferenceFromAliases(
-      allblocksAndPages,
-      aliase
-    );
-    // console.log(groupPageIdData, " d data");
     return (
       <GroupPages
         pageUid={pageUid}
-        data={groupPageIdData}
+        allblocksAndPages={allblocksAndPages}
         aliases={aliase}
         key={aliase.join(",")}
       />
@@ -699,8 +730,9 @@ export const unlinkAliasesInit = () => {
   extension_helper.on_uninstall(
     onRouteChange(() => {
       setTimeout(() => {
+        console.log("init");
         init();
-      }, 200);
+      }, 50);
     })
   );
   init();

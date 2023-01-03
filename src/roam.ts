@@ -1,5 +1,6 @@
 import { PullBlock } from "roamjs-components/types";
 
+const TITLE = "Aliases";
 const PREFIX = "Aliases::";
 const ancestorrule = `[ 
    [ (ancestor ?child ?parent) 
@@ -7,6 +8,10 @@ const ancestorrule = `[
    [ (ancestor ?child ?a) 
         [?parent :block/children ?child ] 
         (ancestor ?parent ?a) ] ] ]`;
+
+const getAliasesUid = () => {
+  return window.roamAlphaAPI.pull("[*]", [":node/title", TITLE])[":block/uid"];
+};
 
 export const roamAliases = {
   all: () => {
@@ -39,59 +44,65 @@ export const roamAliases = {
   },
   page: (page: PullBlock) => {
     // current page
-    const result = window.roamAlphaAPI.q(
-      `
-    [
-        :find  ?s ?uid
-        :in $ %
-        :where
-            [?parent :block/uid "${page[":block/uid"]}"]
-            [?child :block/page ?parent]
-            [?child :block/string ?s]
-            [?child :block/uid ?uid]
-            [(clojure.string/starts-with? ?s  "${PREFIX}")]
-            [?child :block/string ?e]
-    ]
-`,
-      ancestorrule
-    ) as unknown as [string, string][];
-    const currentPageResult = result.map(([aliases, uid]) => {
+    // console.time("page");
+    const aliasesUid = getAliasesUid();
+    if (!aliasesUid) {
+      return [];
+    }
+    const result = window.roamAlphaAPI.data.fast.q(`
+[
+    :find [(pull ?e [*]) ...]
+    :where 
+        [?p :block/uid "${page[":block/uid"]}"]
+        [?ref1 :block/uid "${aliasesUid}"]
+        [?e :block/refs ?ref1] 
+        [?e :block/page ?p]
+]`) as unknown as PullBlock[];
+
+    const currentPageResult = result.map((block) => {
       return [
-        aliases
+        block[":block/string"]
           .substring(PREFIX.length)
           .split(",")
           .map((s) => s.trim()),
-        uid,
+        block[":block/uid"],
       ];
     }) as [string[], string][];
 
-    const result2 = window.roamAlphaAPI.q(
+    const result2 = window.roamAlphaAPI.data.fast.q(
       `
     [
-        :find  ?s ?uid
-        :in $ %
+        :find [(pull ?e [*]) ...]
         :where
-            [?child :block/page ?parent]
-            [?child :block/string ?s]
-            [?child :block/uid ?uid]
-            [(clojure.string/starts-with? ?s  "${PREFIX}")]
-            [(clojure.string/includes? ?s  "${page[":node/title"]}")]
+          [?ref1 :block/uid "${aliasesUid}"]
+          [?e :block/refs ?ref1] 
+          [?e :block/string ?s]
+          [(clojure.string/starts-with? ?s  "${PREFIX}")]
+          [(clojure.string/includes? ?s  "${page[":node/title"]}")]
     ]
-`,
-      ancestorrule
-    ) as unknown as [string, string][];
-    console.log(result2, " -------@", page[":node/title"], page);
-    const containsPageResult = result2.map(([aliases, uid]) => {
+`
+    ) as unknown as PullBlock[];
+
+    const containsPageResult = result2.map((block) => {
       return [
-        aliases
+        block[":block/string"]
           .substring(PREFIX.length)
           .split(",")
           .map((s) => s.trim())
-          // 过滤掉等于当前页面的 alias
-          .filter((s) => s !== page[":node/title"]),
-        uid,
+        // 过滤掉等于当前页面的 alias
+        .filter((s) => s !== page[":node/title"]),
+        block[":block/uid"],
       ];
     }) as [string[], string][];
+    // console.timeEnd("page");
+    // console.log(
+    //   currentPageResult,
+    //   containsPageResult,
+    //   " -------@",
+    //   page[":node/title"],
+    //   page,
+    //   aliasesUid
+    // );
 
     return currentPageResult.concat(containsPageResult);
   },
