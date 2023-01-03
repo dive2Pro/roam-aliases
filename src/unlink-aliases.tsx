@@ -723,16 +723,15 @@ const init = async () => {
   }
   // check if
   const el = mountEl();
-  ReactDOM.render(<UnlinkAliases page={block} />, el);
+  setTimeout(() => {
+    ReactDOM.render(<UnlinkAliases page={block} />, el);
+  }, 50);
 };
 
 export const unlinkAliasesInit = () => {
   extension_helper.on_uninstall(
     onRouteChange(() => {
-      setTimeout(() => {
-        console.log("init");
-        init();
-      }, 50);
+      init();
     })
   );
   init();

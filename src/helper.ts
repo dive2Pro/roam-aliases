@@ -19,7 +19,7 @@ export const onRouteChange = (cb: () => void) => {
     onhashchange?.call(window, evt);
     setTimeout(() => {
       cb();
-    }, 200);
+    }, 1);
   };
   return () => {
     window.onhashchange = onhashchange;
