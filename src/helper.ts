@@ -40,3 +40,6 @@ export const debounce = <T, R>(cb: (...args: T[]) => R, ms = 500) => {
     }, ms);
   };
 };
+
+
+export const delay = (ms = 10) => new Promise((resolve) => setTimeout(resolve, ms));

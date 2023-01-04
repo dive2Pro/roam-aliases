@@ -17,12 +17,11 @@ import {
   useHighlightUnlinkAliases,
   useHighlightWordsInDom,
 } from "./find-and-replace-text-in-dom";
-import { extension_helper, keys, onRouteChange } from "./helper";
+import { delay, extension_helper, keys, onRouteChange } from "./helper";
 import { roam, roamAliases } from "./roam";
 import { AliasesBlock } from "./type";
 import fd from "findandreplacedomtext";
 
-const delay = (ms = 10) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const isPage = (block: PullBlock) => {
   return !!block[":node/title"];
@@ -566,7 +565,6 @@ const UnlinkAliases = ({ page }: { page: Partial<PullBlock> }) => {
     if (aliases[0].length) {
       const allblocksAndPages = await roam.allBlockAndPages(exceptUids, reset);
       checkMount();
-      await delay(10);
       // console.time("add");
       const v = addAliasesToBP(
         page[":node/title"],
@@ -576,6 +574,7 @@ const UnlinkAliases = ({ page }: { page: Partial<PullBlock> }) => {
       );
       // console.timeEnd("add");
       await delay(10);
+      checkMount();
       setState([aliases[0], v]);
       // console.log("=v", aliases, v);
     }

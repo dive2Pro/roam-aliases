@@ -1,4 +1,6 @@
+import { Toaster } from "@blueprintjs/core";
 import { PullBlock } from "roamjs-components/types";
+import { delay } from "./helper";
 
 const TITLE = "Aliases";
 const PREFIX = "Aliases::";
@@ -27,7 +29,7 @@ export const roamAliases = {
             [?child :block/string ?e]
     ]
     
-`,
+`
     ) as unknown as [string, string][];
 
     return result.map(([aliases, page]) => {
@@ -87,8 +89,8 @@ export const roamAliases = {
           .substring(PREFIX.length)
           .split(",")
           .map((s) => s.trim())
-        // 过滤掉等于当前页面的 alias
-        .filter((s) => s !== page[":node/title"]),
+          // 过滤掉等于当前页面的 alias
+          .filter((s) => s !== page[":node/title"]),
         block[":block/uid"],
       ];
     }) as [string[], string][];
@@ -122,9 +124,17 @@ const allBlocks = () => {
 };
 
 export const roam = {
-  allBlockAndPages: (uids: string[], reset = false) => {
+  allBlockAndPages: async (uids: string[], reset = false) => {
     if (reset || !_allblocks) {
+      const toast = Toaster.create({});
+      const toastId = toast.show({
+        icon: "lightbulb",
+        message: "Aliases is loading graph",
+        timeout: 0
+      });
+      await delay()
       _allblocks = allBlocks();
+      toast.dismiss(toastId);
     }
     var allblocksAndPages = _allblocks;
     return allblocksAndPages;
