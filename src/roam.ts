@@ -85,12 +85,21 @@ export const roamAliases = {
 
     const containsPageResult = result2.map((block) => {
       return [
-        block[":block/string"]
-          .substring(PREFIX.length)
-          .split(",")
-          .map((s) => s.trim())
-          // 过滤掉等于当前页面的 alias
-          .filter((s) => s !== page[":node/title"]),
+        [
+          window.roamAlphaAPI.data.q(`
+            [
+              :find ?title .
+              :in $ ?page
+              :where
+                [?page :node/title ?title]
+            ]
+          `, block[":block/page"][":db/id"])
+          , ...block[":block/string"]
+            .substring(PREFIX.length)
+            .split(",")
+            .map((s) => s.trim())
+            // 过滤掉等于当前页面的 alias
+            .filter((s) => s !== page[":node/title"])],
         block[":block/uid"],
       ];
     }) as [string[], string][];
@@ -98,6 +107,7 @@ export const roamAliases = {
     // console.log(
     //   currentPageResult,
     //   containsPageResult,
+    //   result2,
     //   " -------@",
     //   page[":node/title"],
     //   page,
@@ -106,7 +116,7 @@ export const roamAliases = {
 
     return currentPageResult.concat(containsPageResult);
   },
-  block: () => {},
+  block: () => { },
 };
 
 let _allblocks: PullBlock[];
@@ -161,7 +171,7 @@ export const roam = {
     },
   },
   block: {
-    open: () => {},
+    open: () => { },
   },
   getPullBlockFromUid: (uid: string) => {
     return window.roamAlphaAPI.pull(
