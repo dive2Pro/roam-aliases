@@ -83,7 +83,9 @@ export const roamAliases = {
 `
     ) as unknown as PullBlock[];
 
-    const containsPageResult = result2.map((block) => {
+    const containsPageResult = result2.filter(block => {
+      return block[':block/string'].substring(PREFIX.length).split(",").some( s => s === page[":node/title"])
+    }).map((block) => {
       return [
         [
           window.roamAlphaAPI.data.q(`
