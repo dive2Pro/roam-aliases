@@ -29,18 +29,18 @@ const isPage = (block: PullBlock) => {
 
 const EL_CLASS = "rm-unlink-aliases";
 const unmount = () => {
-  const roamArticle = document.querySelector(".roam-article") as HTMLDivElement;
-  const div = roamArticle.querySelector(`.${EL_CLASS}`);
-  if (div) {
-    roamArticle.removeChild(div);
+  const divs = document.querySelectorAll(`.${EL_CLASS}`);
+  if (divs) {
+    divs.forEach(div => div.remove());
   }
 };
 
 const mountEl = () => {
   const div = document.createElement("div");
   div.className = EL_CLASS;
-  const roamArticle = document.querySelector(".roam-article") as HTMLDivElement;
-  roamArticle.appendChild(div);
+  const article = document.querySelector(".roam-article") as HTMLDivElement;
+  const roamArticle = article.children[1].querySelector(".rm-reference-main");
+  roamArticle.parentElement.appendChild(div);
   return div;
 };
 
@@ -717,12 +717,14 @@ const init = async () => {
     return;
   }
   const block = roam.getPullBlockFromUid(pageOrBlockUid);
+  console.log(' mounting ----', pageOrBlockUid, block)
+
   if (!isPage(block)) {
     return;
   }
   // check if
-  const el = mountEl();
   setTimeout(() => {
+    const el = mountEl();
     ReactDOM.render(<UnlinkAliases page={block} />, el);
   }, 50);
 };

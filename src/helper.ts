@@ -13,16 +13,14 @@ export const extension_helper = {
 };
 
 export const onRouteChange = (cb: () => void) => {
-  const onhashchange = window.onhashchange?.bind(window);
-
+  window.addEventListener("hashchange", cb);
   window.onhashchange = (evt) => {
-    onhashchange?.call(window, evt);
     setTimeout(() => {
       cb();
     }, 1);
   };
   return () => {
-    window.onhashchange = onhashchange;
+    window.removeEventListener("hashchange", cb);
   };
 };
 
