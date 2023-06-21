@@ -36,7 +36,11 @@ const unmount = () => {
 };
 
 const mountEl = () => {
-  const div = document.createElement("div");
+  let div = document.querySelector(`.${EL_CLASS}`);
+  if (div) {
+    return div
+  }
+  div = document.createElement("div");
   div.className = EL_CLASS;
   const article = document.querySelector(".roam-article") as HTMLDivElement;
   const roamArticle = article.children[1].querySelector(".rm-reference-main");
