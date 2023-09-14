@@ -44,8 +44,7 @@ const mountEl = () => {
   div.className = EL_CLASS;
   // const article = document.querySelector(".roam-article") as HTMLDivElement;
   const roamArticle = document.querySelector(".roam-article")
-      .children[1].querySelector(".rm-reference-main")
-  ;
+      .children[1].querySelector(".rm-reference-main").parentElement
   roamArticle.appendChild(div);
   return div;
 };
