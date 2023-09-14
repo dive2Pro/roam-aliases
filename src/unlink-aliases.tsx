@@ -42,9 +42,11 @@ const mountEl = () => {
   }
   div = document.createElement("div");
   div.className = EL_CLASS;
-  const article = document.querySelector(".roam-article") as HTMLDivElement;
-  const roamArticle = article.children[1].querySelector(".rm-reference-main");
-  roamArticle.parentElement.appendChild(div);
+  // const article = document.querySelector(".roam-article") as HTMLDivElement;
+  const roamArticle = document.querySelector(".roam-article")
+      .children[1].querySelector(".rm-reference-main")
+  ;
+  roamArticle.appendChild(div);
   return div;
 };
 

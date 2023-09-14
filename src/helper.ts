@@ -13,14 +13,15 @@ export const extension_helper = {
 };
 
 export const onRouteChange = (cb: () => void) => {
-  window.addEventListener("hashchange", cb);
+  const onhashchange = window.onhashchange?.bind(window);
   window.onhashchange = (evt) => {
+    onhashchange?.call(window, evt);
     setTimeout(() => {
       cb();
-    }, 1);
+    }, 20);
   };
   return () => {
-    window.removeEventListener("hashchange", cb);
+    window.onhashchange = onhashchange;
   };
 };
 
@@ -39,5 +40,5 @@ export const debounce = <T, R>(cb: (...args: T[]) => R, ms = 500) => {
   };
 };
 
-
-export const delay = (ms = 10) => new Promise((resolve) => setTimeout(resolve, ms));
+export const delay = (ms = 10) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
