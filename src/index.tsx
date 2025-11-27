@@ -166,7 +166,9 @@ function observeInputChange() {
               fill
               minimal
               alignText="left"
-              onClick={(e) => {
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 let rangeStart = -1;
                 const replaced = elValue.replaceAll(
                   `[[${text}]]`,
