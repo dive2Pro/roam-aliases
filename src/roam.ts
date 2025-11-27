@@ -1,18 +1,20 @@
 import { Toaster } from "@blueprintjs/core";
 import { PullBlock } from "roamjs-components/types";
 import { delay } from "./helper";
+import { getKeyword } from "./config-settings";
 
-const TITLE = "Aliases";
-const PREFIX = "Aliases::";
-const ancestorrule = `[ 
-   [ (ancestor ?child ?parent) 
-        [?parent :block/children ?child] ]
-   [ (ancestor ?child ?a) 
-        [?parent :block/children ?child ] 
-        (ancestor ?parent ?a) ] ] ]`;
+
+// const PREFIX = "Aliases::";
+const getTitle = () => {
+  return getKeyword() || "Aliases";
+}
+
+const getPrefix = () => {
+  return `${getTitle()}::`;
+}
 
 const getAliasesUid = () => {
-  return window.roamAlphaAPI.pull("[*]", [":node/title", TITLE])[":block/uid"];
+  return window.roamAlphaAPI.pull("[*]", [":node/title", getTitle()])[":block/uid"];
 };
 
 export const roamAliases = {
@@ -25,7 +27,7 @@ export const roamAliases = {
             [?parent :node/title ?t]
             [?child :block/page ?parent]
             [?child :block/string ?s]
-            [(clojure.string/starts-with? ?s  "${PREFIX}")]
+            [(clojure.string/starts-with? ?s  "${getPrefix()}")]
             [?child :block/string ?e]
     ]
     
@@ -35,7 +37,7 @@ export const roamAliases = {
     return result.map(([aliases, page]) => {
       return [
         aliases
-          .substring(PREFIX.length)
+          .substring(getPrefix().length)
           .split(",")
           .map((s) => s.trim()),
         page,
@@ -62,7 +64,7 @@ export const roamAliases = {
     const currentPageResult = result.map((block) => {
       return [
         block[":block/string"]
-          .substring(PREFIX.length)
+          .substring(getPrefix().length)
           .split(",")
           .map((s) => s.trim()),
         block[":block/uid"],
@@ -77,14 +79,14 @@ export const roamAliases = {
           [?ref1 :block/uid "${aliasesUid}"]
           [?e :block/refs ?ref1] 
           [?e :block/string ?s]
-          [(clojure.string/starts-with? ?s  "${PREFIX}")]
+          [(clojure.string/starts-with? ?s  "${getPrefix()}")]
           [(clojure.string/includes? ?s  "${page[":node/title"]}")]
     ]
 `
     ) as unknown as PullBlock[];
 
     const containsPageResult = result2.filter(block => {
-      return block[':block/string'].substring(PREFIX.length).split(",").some( s => s === page[":node/title"])
+      return block[':block/string'].substring(getPrefix().length).split(",").some(s => s === page[":node/title"])
     }).map((block) => {
       return [
         [
@@ -97,7 +99,7 @@ export const roamAliases = {
             ]
           `, block[":block/page"][":db/id"])
           , ...block[":block/string"]
-            .substring(PREFIX.length)
+            .substring(getPrefix().length)
             .split(",")
             .map((s) => s.trim())
             // 过滤掉等于当前页面的 alias

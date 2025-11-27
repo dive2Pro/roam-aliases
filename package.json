@@ -33,6 +33,7 @@
     "@types/react": "16.14.2",
     "@types/react-dom": "16.9.10",
     "@types/react-window": "^1.8.5",
+    "roam-types": "^1.0.6",
     "roamjs-scripts": "^0.21.3"
   }
 }

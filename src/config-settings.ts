@@ -1,9 +1,34 @@
-import { RoamExtensionAPI } from "./type";
+import { RoamExtensionAPI } from "roam-types";
+
 
 let API: RoamExtensionAPI;
 export const initConfig = (api: RoamExtensionAPI) => {
   API = api;
+  api.settings.panel.create(
+    {
+      tabTitle: "Aliases",
+      settings: [
+        {
+          id: "Keyword",
+          name: "Keyword",
+          description: "The keyword to use for aliases. Default is 'Aliases'. If you change it, you should also update the page name accordingly.",
+          action: {
+            type: 'input',
+            placeholder: "Aliases",
+            onChange(evt) {
+              const value = evt.target.value;
+              api.settings.set("Keyword", value);
+            },
+          }
+        },
+      ],
+
+    })
 };
+
+export function getKeyword() {
+  return API.settings.get("Keyword") as string || "Aliases";
+}
 
 const CONFIG_PREFIX = "config-";
 

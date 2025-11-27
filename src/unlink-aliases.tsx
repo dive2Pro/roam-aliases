@@ -22,7 +22,6 @@ import { roam, roamAliases } from "./roam";
 import { AliasesBlock } from "./type";
 import fd from "findandreplacedomtext";
 
-
 const isPage = (block: PullBlock) => {
   return !!block[":node/title"];
 };
@@ -31,20 +30,21 @@ const EL_CLASS = "rm-unlink-aliases";
 const unmount = () => {
   const divs = document.querySelectorAll(`.${EL_CLASS}`);
   if (divs) {
-    divs.forEach(div => div.remove());
+    divs.forEach((div) => div.remove());
   }
 };
 
 const mountEl = () => {
   let div = document.querySelector(`.${EL_CLASS}`);
   if (div) {
-    return div
+    return div;
   }
   div = document.createElement("div");
   div.className = EL_CLASS;
   // const article = document.querySelector(".roam-article") as HTMLDivElement;
-  const roamArticle = document.querySelector(".roam-article")
-      .children[1].querySelector(".rm-reference-main").parentElement
+  const roamArticle = document
+    .querySelector(".roam-article")
+    .children[1].querySelector(".rm-reference-main").parentElement;
   roamArticle.appendChild(div);
   return div;
 };
@@ -167,11 +167,11 @@ const getPageGroupAllUnlinnkReferenceFromAliases = <T extends string>(
       p[id].add(bp);
     }
     return p;
-  }, new Set() as Record<T, Set<AliasesBlock>>);
+  }, new Set());
   return keys(filtered).reduce((p, c) => {
-    p[c] = [...filtered[c]];
+    p[c as string] = [...filtered[c as string]];
     return p;
-  }, {} as Record<T, AliasesBlock[]>);
+  }, {} as Record<string, AliasesBlock[]>);
 };
 
 const getGroupAllUnlinkReferenceFromAliases = <T extends string>(
@@ -612,7 +612,12 @@ const UnlinkAliases = ({ page }: { page: Partial<PullBlock> }) => {
       aliase
     );
     return keys(groupData).map((key) => {
-      return <GroupAlias group={key} data={groupData[key]}></GroupAlias>;
+      return (
+        <GroupAlias
+          group={key as string}
+          data={groupData[key as string]}
+        ></GroupAlias>
+      );
     });
   };
 
@@ -722,7 +727,7 @@ const init = async () => {
     return;
   }
   const block = roam.getPullBlockFromUid(pageOrBlockUid);
-  console.log(' mounting ----', pageOrBlockUid, block)
+  console.log(" mounting ----", pageOrBlockUid, block);
 
   if (!isPage(block)) {
     return;
