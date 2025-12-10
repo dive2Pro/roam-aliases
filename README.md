@@ -1,10 +1,10 @@
 # Roam Aliases
 
-![](https://github.com/dive2Pro/roam-aliases/blob/master/demo.png)
+![](https://github.com/dive2Pro/roam-aliases/raw/master/demo.png)
 
 ## select aliases from popup window
 
-![](https://github.com/dive2Pro/roam-aliases/blob/master/demo.gif)
+![](https://github.com/dive2Pro/roam-aliases/raw/master/demo.gif)
 
 ## Unlinked Aliases References
 
