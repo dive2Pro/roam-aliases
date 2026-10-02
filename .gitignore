@@ -1,3 +1,11 @@
 node_modules
 yarn.lock
+package-lock.json
+
+# 构建产物
 extension.js
+extension.js.LICENSE.txt
+.env
+
+# 本地工作目录
+.workbuddy
