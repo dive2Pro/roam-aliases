@@ -12,7 +12,7 @@ import React, { FC, useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import { PullBlock } from "roamjs-components/types";
 import { BreadcrumbsBlock } from "./breadcrumbs-block";
-import { readConfigFromUid, saveConfigByUid } from "./config-settings";
+import { readConfigFromUid, saveConfigByUid, getCaseInsensitive } from "./config-settings";
 import {
   useHighlightUnlinkAliases,
   useHighlightWordsInDom,
@@ -61,23 +61,86 @@ const getAllAliasesFromPage = (page: PullBlock) => {
 };
 
 /**
+ * 把字符串中所有正则元字符转义, 以便安全地拼进 RegExp
+ */
+const escapeRegExp = (text: string) =>
+  text.replace(/[.*+?^=!:${}()|[\]/\\]/g, "\\$&");
+
+/**
+ * 大小写不敏感地判断 `haystack` 中是否包含 `needle`
+ */
+const includesIgnoreCase = (haystack: string, needle: string) =>
+  haystack.toLowerCase().includes(needle.toLowerCase());
+
+/**
+ * `aliasesFilter2` 需要的匹配策略.
+ *
+ * 单独抽出来是为了让 `addAliasesToBP` 只需在整轮扫描前读一次设置,
+ * 而不是每个 block × 每个 alias 都去调 `settings.get`
+ * (大图上这会放大到十万量级).
+ */
+type MatchStrategy = {
+  flag: "g" | "gi";
+  contains: (haystack: string, needle: string) => boolean;
+};
+
+const getMatchStrategy = (): MatchStrategy => {
+  const caseInsensitive = getCaseInsensitive();
+  return caseInsensitive
+    ? { flag: "gi", contains: includesIgnoreCase }
+    : { flag: "g", contains: (haystack, needle) => haystack.includes(needle) };
+};
+
+/**
  *
  * 检查除了 `[alias]([[target title]])`, `[[{pageTitle}]]`, `#{pageTitle}` 外
  * 是否还有 alias 字符存在于 source 中
  *
+ * 默认大小写敏感 (保持旧行为); 当设置项 "Case insensitive unlinked aliases"
+ * 开启时, 匹配变为大小写不敏感, 以支持正文与 alias 大小写不一致的场景 (issue #9)
+ *
  */
-const aliasesFilter2 = (pageTitle: string, alias: string, source: string) => {
-  const includes = source.includes(alias);
-  if (!includes) {
+const aliasesFilter2 = (
+  pageTitle: string,
+  alias: string,
+  source: string,
+  strategy: MatchStrategy = getMatchStrategy()
+) => {
+  if (!alias) {
     return false;
   }
-  // console.log(includes, ' = include', source, alias)
-  return source
-    .replaceAll(`[${alias}]([[${pageTitle}]])`, "")
-    .replaceAll(`[[${pageTitle}]]`, "")
-    .replaceAll(`#[[${pageTitle}]]`, "")
-    .replaceAll(`#${pageTitle}`, "")
-    .includes(alias);
+
+  const { flag, contains } = strategy;
+
+  if (!contains(source, alias)) {
+    return false;
+  }
+
+  // 先移除所有"已链接"形态, 再看是否还残留裸 alias 文本.
+  // 排除逻辑与上面的包含判断使用同一大小写策略, 避免策略不一致导致误报.
+  const linkedForms = [
+    // [alias]([[pageTitle]])
+    new RegExp(
+      `\\[${escapeRegExp(alias)}\\]\\(\\[\\[${escapeRegExp(
+        pageTitle
+      )}\\]\\]\\)`,
+      flag
+    ),
+    // [[pageTitle]]
+    new RegExp(`\\[\\[${escapeRegExp(pageTitle)}\\]\\]`, flag),
+    // #[[pageTitle]]
+    new RegExp(`#\\[\\[${escapeRegExp(pageTitle)}\\]\\]`, flag),
+    // #pageTitle  (仅当页面标题不含空格时才是合法的 tag 形态)
+    ...(pageTitle.includes(" ")
+      ? []
+      : [new RegExp(`#${escapeRegExp(pageTitle)}`, flag)]),
+  ];
+
+  const stripped = linkedForms.reduce(
+    (acc, reg) => acc.replace(reg, ""),
+    source
+  );
+  return contains(stripped, alias);
 };
 
 /**
@@ -113,6 +176,8 @@ const addAliasesToBP = (
   exceptUids: string[],
   aliases: string[]
 ) => {
+  // 整轮扫描只读一次设置, 避免在 block × alias 的双层循环里反复调用
+  const strategy = getMatchStrategy();
   return allblocksAndPages.map((bp) => {
     if (
       exceptUids.some((uid) => {
@@ -123,7 +188,7 @@ const addAliasesToBP = (
     }
     const s = bp[":block/string"] || bp[":node/title"] || "";
     aliases.forEach((alias) => {
-      const r = aliasesFilter2(pageTitle, alias, s);
+      const r = aliasesFilter2(pageTitle, alias, s, strategy);
       if (r) {
         bp = { ...bp };
         if (!bp.aliases) {
@@ -338,7 +403,10 @@ const GroupAlias = (props: { group: string; data: PullBlock[] }) => {
   // });
   useHighlightWordsInDom(".rm-unlink-aliases", (el) => {
     fd(el, {
-      find: props.group,
+      find: new RegExp(
+        escapeRegExp(props.group),
+        getCaseInsensitive() ? "gi" : "g"
+      ),
       wrap: "span",
       wrapClass: "unlink-word",
     });
@@ -476,7 +544,10 @@ const GroupPages = (props: {
       })
       .forEach((alias) => {
         fd(el, {
-          find: alias,
+          find: new RegExp(
+            escapeRegExp(alias),
+            getCaseInsensitive() ? "gi" : "g"
+          ),
           wrap: "span",
           wrapClass: "unlink-word",
         });

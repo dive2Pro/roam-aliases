@@ -21,6 +21,18 @@ export const initConfig = (api: RoamExtensionAPI) => {
             },
           }
         },
+        {
+          id: "CaseInsensitive",
+          name: "Case insensitive unlinked aliases",
+          description:
+            "Off (default): match unlinked aliases case-sensitively, keeping the original behavior. On: also match aliases that differ only in letter case (e.g. an alias 'vitamin B12' will match the text 'Vitamin B12').",
+          action: {
+            type: 'switch',
+            onChange(evt) {
+              api.settings.set("CaseInsensitive", evt.target.checked);
+            },
+          }
+        },
       ],
 
     })
@@ -28,6 +40,15 @@ export const initConfig = (api: RoamExtensionAPI) => {
 
 export function getKeyword() {
   return API.settings.get("Keyword") as string || "Aliases";
+}
+
+/**
+ * 未链接别名匹配是否大小写不敏感. 默认 false, 保持旧行为 (issue #9 的可选开关)
+ */
+export function getCaseInsensitive() {
+  const value = API.settings.get("CaseInsensitive");
+  // switch 行会自动保存布尔值; 这里同时兼容字符串形式, 避免因存储形态不同而失效
+  return value === true || value === "true";
 }
 
 const CONFIG_PREFIX = "config-";

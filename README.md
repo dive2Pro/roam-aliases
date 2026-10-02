@@ -33,6 +33,12 @@ You can customize the keyword used for aliases through the extension settings:
 
 For example, if you set the keyword to "aliases", you should rename "Aliases" page name to "aliases"
 
+### Case insensitive unlinked aliases
+
+By default, "Unlinked Aliases References" matches aliases **case-sensitively** (the original behavior). If your graph mixes cases — e.g. an alias `vitamin B12` written in the page text as `Vitamin B12` — turn on the **"Case insensitive unlinked aliases"** switch in the same "Aliases" settings tab to match aliases regardless of letter case.
+
+Note: with the switch on, very short aliases may match unintended words, since matching is no longer case-sensitive.
+
 # todo
 
 - [x] find unlinked aliases
